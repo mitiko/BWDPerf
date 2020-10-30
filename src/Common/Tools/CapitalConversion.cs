@@ -4,6 +4,7 @@ using BWDPerf.Architecture;
 using BWDPerf.Interfaces;
 using System.Text;
 using System.Collections.Generic;
+using System;
 
 namespace BWDPerf.Common.Tools
 {
@@ -26,35 +27,38 @@ namespace BWDPerf.Common.Tools
         {
             byte[] buffer = new byte[1];
             byte[] lowerCaseBytes = new byte[this.MaxByteCount];
-            char[] charBuffer = new char[1];
+            char[] charBuffer = new char[this.MaxByteCount];
             var skippedBytes = new Queue<byte>();
             await foreach (var symbol in input)
             {
                 buffer[0] = symbol;
                 var written = this.Decoder.GetChars(buffer, 0, 1, charBuffer, 0);
+                skippedBytes.Enqueue(symbol);
                 if (written == 0)
-                {
-                    skippedBytes.Enqueue(symbol);
                     continue;
-                }
-   
-                if (char.IsUpper(charBuffer[0]))
+                
+                for (int i = 0; i < written; i++)
                 {
-                    yield return this._flag;
-                    charBuffer[0] = char.ToLower(charBuffer[0]);
-                    var bytesCount = this.Encoder.GetBytes(charBuffer, 0, 1, lowerCaseBytes, 0, flush: false);
-                    for (int i = 0; i < bytesCount; i++)
-                        yield return lowerCaseBytes[i];
-                }
-                else if (charBuffer[0] == this._flag)
-                {
-                    yield return this._flag;
-                    yield return buffer[0];
-                }
-                else
-                {
-                    while (skippedBytes.Count != 0)
-                        yield return skippedBytes.Dequeue();
+                    if (char.IsUpper(charBuffer[i]))
+                    {
+                        yield return this._flag;
+                        charBuffer[i] = char.ToLower(charBuffer[i]);
+                        var bytesCount = this.Encoder.GetBytes(charBuffer, 0, 1, lowerCaseBytes, 0, false);
+                        for (int j = 0; j < bytesCount; j++)
+                            yield return lowerCaseBytes[j];
+                        skippedBytes.Clear();
+                    }
+                    else
+                    {
+                        while (skippedBytes.Count != 0)
+                        {
+                            var s = skippedBytes.Dequeue();
+                            if (s == this._flag)
+                                yield return this._flag;
+                            yield return s;
+                        }
+                        break;
+                    }
                 }
             }
             this.Decoder.Reset();

@@ -23,13 +23,8 @@ namespace BWDPerf.Tools
             Timer = Stopwatch.StartNew();
         }
 
-        // public void UpdateProgress(double progressChange) =>
-        //     this.Progress += progressChange;
-        public void UpdateProgress(double progressChange)
-        {
+        public void UpdateProgress(double progressChange) =>
             this.Progress += progressChange;
-            // Console.WriteLine(progressChange);
-        }
 
         private double GetPercentage() =>
             Math.Floor(this.Progress / this.Total * 100);

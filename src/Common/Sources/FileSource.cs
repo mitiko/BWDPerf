@@ -25,7 +25,6 @@ namespace BWDPerf.Common.Sources
 
         public async IAsyncEnumerable<byte> Fetch()
         {
-            System.Console.WriteLine("Started reading");
             var reader = PipeReader.Create(this.File.OpenRead());
             var progressBar = new LinearProgressBar(this.File.Length);
 
@@ -34,21 +33,16 @@ namespace BWDPerf.Common.Sources
                 var result = await reader.ReadAsync();
                 var buffer = result.Buffer;
 
-                // progressBar.UpdateProgress(buffer.Length);
-                // progressBar.Print();
-
+                progressBar.UpdateProgress(buffer.Length);
+                progressBar.Print();
+                
                 foreach (var symbol in buffer.ToArray())
-                    // yield return symbol;
-                {
-                    // System.Console.WriteLine($"Writing {(char) symbol}");
                     yield return symbol;
-                }
 
-                reader.AdvanceTo(buffer.Start, buffer.End);
+                reader.AdvanceTo(buffer.End, buffer.End);
                 if (result.IsCompleted)
                     break;
             }
-            System.Console.WriteLine("Ended reading");
         }
     }
 }

@@ -22,25 +22,21 @@ namespace BWDPerf.Common.Serializers
 
         public async Task Complete(IAsyncEnumerable<byte> input)
         {
-            System.Console.WriteLine("Started writing");
             using var writer = new BinaryWriter(this.File.OpenWrite());
+
             var buffer = new byte[this.BufferSize];
             var count = 0;
+
             await foreach (var symbol in input)
             {
                 if (count == buffer.Length)
-                {
                     writer.Write(buffer, 0, count);
-                    count = 0;
-                }
                 else
-                {
                     buffer[count] = symbol;
-                    count++;
-                }
+
+                count = count == buffer.Length ? 0 : count + 1;
             }
             writer.Write(buffer, 0, count);
-            System.Console.WriteLine("Ended writing");
         }
     }
 }
