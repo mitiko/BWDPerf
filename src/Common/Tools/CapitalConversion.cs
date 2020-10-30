@@ -1,0 +1,69 @@
+using System.Threading.Channels;
+using System.Threading.Tasks;
+using BWDPerf.Architecture;
+using BWDPerf.Interfaces;
+using System.Text;
+using System.Collections.Generic;
+
+namespace BWDPerf.Common.Tools
+{
+    public class CapitalConversion : ICoder<byte, byte>, IDecoder<byte, byte>
+    {
+        public Decoder Decoder { get; }
+        public Encoder Encoder { get; }
+        public int MaxByteCount { get; }
+        private readonly byte _flag = (byte) '^'; // 0x5e CIRCUMFLEX ACCENT is 1 byte in UTF8, since it's in ASCII
+
+        public CapitalConversion(Encoding encoding = null)
+        {
+            if (encoding == null) encoding = Encoding.UTF8;
+            this.Decoder = encoding.GetDecoder();
+            this.Encoder = encoding.GetEncoder();
+            this.MaxByteCount = encoding.GetMaxByteCount(1);
+        }
+
+        public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<byte> input)
+        {
+            byte[] buffer = new byte[1];
+            byte[] lowerCaseBytes = new byte[this.MaxByteCount];
+            char[] charBuffer = new char[1];
+            var skippedBytes = new Queue<byte>();
+            await foreach (var symbol in input)
+            {
+                buffer[0] = symbol;
+                var written = this.Decoder.GetChars(buffer, 0, 1, charBuffer, 0);
+                if (written == 0)
+                {
+                    skippedBytes.Enqueue(symbol);
+                    continue;
+                }
+   
+                if (char.IsUpper(charBuffer[0]))
+                {
+                    yield return this._flag;
+                    charBuffer[0] = char.ToLower(charBuffer[0]);
+                    var bytesCount = this.Encoder.GetBytes(charBuffer, 0, 1, lowerCaseBytes, 0, flush: false);
+                    for (int i = 0; i < bytesCount; i++)
+                        yield return lowerCaseBytes[i];
+                }
+                else if (charBuffer[0] == this._flag)
+                {
+                    yield return this._flag;
+                    yield return buffer[0];
+                }
+                else
+                {
+                    while (skippedBytes.Count != 0)
+                        yield return skippedBytes.Dequeue();
+                }
+            }
+            this.Decoder.Reset();
+            this.Encoder.Reset();
+        }
+
+        public IAsyncEnumerable<byte> Decode(IAsyncEnumerable<byte> input)
+        {
+            throw new System.NotImplementedException();
+        }
+    }
+}
