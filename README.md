@@ -2,6 +2,12 @@
 
 BWD stands for Best Word Dictionary as it has the ability to be an optimal dictionary coder.  
 
+## Structure of the repository
+
+The repository contains a very efficient pipeline for compression, that will later be seperated in a different repo and (currently) no implementation of BWD. My goal is to implement BWD more efficiently than my PoC local project, hence the Perf in BWDPerf.
+
+## Introduction
+
 A dictionary coder encodes strings of characters (also called words) as individual symbols, that then can go through an entropy coder of choice.
 There are 2 types of dictionary coders - static and dynamic.
 
