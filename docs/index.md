@@ -1,17 +1,3 @@
-<style>
-html, body {
-    font-size: 1em;
-}
-
-html {
-    padding: 0;
-}
-
-code {
-    color: rgb(236, 28, 28);
-}
-</style>
-
 # BWDPerf
 
 BWD stands for Best Word Dictionary as it has the ability to be an optimal dictionary coder.

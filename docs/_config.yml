@@ -1,0 +1,6 @@
+# Jekyll configuration
+name: My BWD
+decription: BWD stands for Best Word Dictionary as it has the ability to be an optimal dictionary coder.
+markdown: kramdown
+kramdown:
+  math_engine: katex
