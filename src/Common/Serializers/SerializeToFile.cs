@@ -8,7 +8,7 @@ using BWDPerf.Interfaces;
 
 namespace BWDPerf.Common.Serializers
 {
-    public class SerializeToFile : ISerializer
+    public class SerializeToFile : ISerializer<byte>
     {
         public FileInfo File { get; }
         public int BufferSize { get; }

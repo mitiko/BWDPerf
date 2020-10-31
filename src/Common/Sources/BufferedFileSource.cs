@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
@@ -7,16 +8,22 @@ using BWDPerf.Tools;
 
 namespace BWDPerf.Common.Sources
 {
-    public class FileSource : ISource<byte>
+    public class BufferedFileSource : ISource<byte[]>
     {
         public FileInfo File { get; }
+        public int BufferSize { get; }
 
-        public FileSource(string fileName) =>
-            this.File = new FileInfo(fileName);
-
-        public async IAsyncEnumerable<byte> Fetch()
+        public BufferedFileSource(string fileName, int bufferSize = -1)
         {
-            var reader = PipeReader.Create(this.File.OpenRead());
+            this.File = new FileInfo(fileName);
+            if (bufferSize < 0)
+                bufferSize = (16 << 10); // 16Kb default buffer
+            this.BufferSize = bufferSize;
+        }
+
+        public async IAsyncEnumerable<byte[]> Fetch()
+        {
+            var reader = PipeReader.Create(this.File.OpenRead(), new StreamPipeReaderOptions(bufferSize: this.BufferSize));
             var progressBar = new LinearProgressBar(this.File.Length);
 
             while (true)
@@ -27,8 +34,8 @@ namespace BWDPerf.Common.Sources
                 progressBar.UpdateProgress(buffer.Length);
                 progressBar.Print();
                 
-                foreach (var symbol in buffer.ToArray())
-                    yield return symbol;
+                if (buffer.Length != 0)
+                    yield return buffer.ToArray();
 
                 buffer = buffer.Slice(buffer.End);
                 reader.AdvanceTo(buffer.End, buffer.End);

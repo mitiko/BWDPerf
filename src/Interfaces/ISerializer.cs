@@ -3,8 +3,8 @@ using System.Threading.Tasks;
 
 namespace BWDPerf.Interfaces
 {
-    public interface ISerializer
+    public interface ISerializer<Symbol>
     {
-        Task Complete(IAsyncEnumerable<byte> input);
+        Task Complete(IAsyncEnumerable<Symbol> input);
     }
 }

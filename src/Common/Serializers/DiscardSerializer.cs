@@ -4,9 +4,9 @@ using BWDPerf.Interfaces;
 
 namespace BWDPerf.Common.Serializers
 {
-    public class DiscardSerializer : ISerializer
+    public class DiscardSerializer<Symbol> : ISerializer<Symbol>
     {
-        public async Task Complete(IAsyncEnumerable<byte> input)
+        public async Task Complete(IAsyncEnumerable<Symbol> input)
         {
             await foreach (var symbol in input) { }
         }

@@ -2,8 +2,8 @@ using System.Collections.Generic;
 
 namespace BWDPerf.Interfaces
 {
-    public interface ISource
+    public interface ISource<Symbol>
     {
-        IAsyncEnumerable<byte> Fetch();
+        IAsyncEnumerable<Symbol> Fetch();
     }
 }
