@@ -89,9 +89,15 @@ We have to max all our constants:
 \\(b=n, m=n,\\) ordering is done in \\(O(\|W\|!)\\) time, and all orderings are tried. This will for sure give us better results than most LZ implementations. Actually, before any proper testing (and with sub-optimal ordering) it is almost certain BWD is a better dictionary than most dynamic ones. When we take into account a complex group of patterns and context switching (both areas, where work is still needed), it will redefine the limits of a dictionary coder. More on that at [context splitting](#1b-context-splitting).
 
 Let's assume some dictionary is being used. We can calculate the compression ratio, fairly easily by counting the bits in the input in 2 ways - by characters and by words. (Please contact me for a full proof and more of my notes.) We'll end up with the following:  
+
+
+
 $$\Large
 \gamma = \log_{\alpha}d \times { {1}\over{\sum\limits_{w \in W}p(w)\|w\| } }
-$$
+$$  
+
+
+
 For an alphabet \\({A: \|A\| = \alpha,}\\) dictionary of size \\(d\\) and probability of word \\(\large {p(w): \sum\limits_{w \in W}p(w)=1}\\)  
 Which is oddly similiar to entropy, except we're dividing rather than substracting. The probability times the word length corresponds to the probability times optimal code length in entropy.
 
