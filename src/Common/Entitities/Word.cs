@@ -1,4 +1,3 @@
-using System;
 using System.Text;
 
 namespace BWDPerf.Common.Entities
@@ -8,13 +7,13 @@ namespace BWDPerf.Common.Entities
         public byte[] Content { get; set; }
         public int Size { get => this.Content.Length; }
         public int Count { get; set; }
-        public float Rank { get; set; }
-        
-        public Word(byte[] content, int count)
+        public bool IsPattern { get; }
+
+        public Word(byte[] content, int count, bool isPattern = false)
         {
             this.Content = content;
             this.Count = count;
-            this.Rank = 0; 
+            this.IsPattern = isPattern;
         }
 
         public string ToString(Encoding encoding = null)
@@ -22,6 +21,7 @@ namespace BWDPerf.Common.Entities
             if (encoding == null)
                 encoding = Encoding.UTF8;
 
+            if (this.IsPattern) return "<s>";
             return encoding.GetString(this.Content);
         }
     }
