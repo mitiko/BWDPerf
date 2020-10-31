@@ -1,3 +1,10 @@
+<!-- Load jQuery -->
+<script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+<!-- Load KaTeX -->
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/KaTeX/0.1.1/katex.min.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/KaTeX/0.1.1/katex.min.js"></script>
+
+
 # BWDPerf
 
 BWD stands for Best Word Dictionary as it has the ability to be an optimal dictionary coder.
@@ -162,3 +169,17 @@ All the words generated from those sets will be independent and can be ranked/or
 ### 1d. Independent words
 
 Since disjoined sets produce a lot of symbols and not enough independ words, we can try graph all prefixes and postfixes of words and find independent word pairs or groups. The end goal is again to simplify ordering/ranking. Although it's not actually a simplification in the bigger picture, when ranking/ordering we have less restrictions and can use better optimization algorithms to find an optimal ordering.
+
+<script>
+$("script[type='math/tex']").replaceWith(
+    function(){
+    var tex = $(this).text();
+    return "<span class=\"inline-equation\">" + katex.renderToString(tex) + "</span>";
+});
+      
+$("script[type='math/tex; mode=display']").replaceWith(
+    function(){
+    var tex = $(this).text();
+    return "<div class=\"equation\">" + katex.renderToString("\\displaystyle "+tex) + "</div>";
+});
+</script>
