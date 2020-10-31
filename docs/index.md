@@ -169,7 +169,7 @@ We select the best regions and calculate information loss. For each position of 
 I'll be brief with those, as I'm not sure they are very applicable.
 
 We split the alphabet of symbols \\(A\\) into two disjoined stes of symbols:  
-\\(\large S_1 \cup S_2 = A, S_1 \cap S_2 = \emptyset\\)  
+\\(\large S_1 \cup S_2 = A, S_1 \cap S_2 = \varnothing\\)  
 All the words generated from those sets will be independent and can be ranked/ordered independently of the others in the final ranking/ordering.
 
 ### 1d. Independent words
