@@ -124,13 +124,14 @@ To be honest patterns are a bit of a cheat, as they're more context splitting or
 Obviously we can't generate all possible regex patterns at runtime, instead we can limit ourselves to a set of patterns and rules and explicitly add some useful regex's directly in the encoder (those don't need to be written to the stream if not used, as long as the decoder can recognise them in the dictionary).  
 For each selected word (pre-ranking), we create all possible patterns that match that word, and add it to the list of words. We only need unique patterns. It is important patterns and words get ranked together, therefore the ranking function must be modified to accomodate for the information gain that supplementary literals/symbols create.
 
-Here are some proposals for matching symbols in patterns: 
+Here are some proposals for matching symbols in patterns:  
+
 | Pattern symbol | What it matches |
 | -------------- | --------------- |
 | `*` | any character |
 | `*+` or `.` | any amount of characters |
 | `A` through `Z`, ie. uppercase letters | any repeating unique characters in a word |
-|||
+|              |               |
 
 _Examples_:  
 `the*` matches `them, the\x20, then, there, another, bother, father, mother, they, their, northern, prometheus`  
