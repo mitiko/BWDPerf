@@ -1,9 +1,8 @@
-<!-- Load jQuery -->
-<script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
-<!-- Load KaTeX -->
-<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/KaTeX/0.1.1/katex.min.css">
-<script src="//cdnjs.cloudflare.com/ajax/libs/KaTeX/0.1.1/katex.min.js"></script>
-
+<head>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.10.2/dist/katex.min.css" integrity="sha384-yFRtMMDnQtDRO8rLpMIKrtPCD5jdktao2TV19YiZYWMDkUR5GQZR/NOVTdquEx1j" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.10.2/dist/katex.min.js" integrity="sha384-9Nhn55MVVN0/4OFx7EE5kpFBPsEMZxKTCnA+4fqDmg12eCTqGi6+BB2LjY8brQxJ" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.10.2/dist/contrib/auto-render.min.js" integrity="sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
+</head>
 
 # BWDPerf
 
@@ -38,15 +37,15 @@ Also sounds cool that you can say it doesn't work backwards and forwards, but ra
 
 ### 1. Algorithm
 
-As noted above, BWD needs an ordered dictionary. To creates such, we go through all possible words up to size $m$:
-${W = \{w : \|w\| < m\}}$  
+As noted above, BWD needs an ordered dictionary. To creates such, we go through all possible words up to size \\(m\\):
+\\({W = \{w : \|w\| < m\}}\\)  
 Next we rank each word using a [ranking](#21-ranking) algorithm: 
-${r(w) \in \R, \forall w\in W}$.
+\\({r(w) \in \R, \forall w\in W}\\).
 
 We sort the words based on their ranking and remove all words that can't exist in the stream.
 For example: `them` as a word can't exist in the dictionary if it follows `the`. This is not as simple as it sounds, we can't just remove words that are supersets of words higher up, for example:
 The word `noted` might never appear after `as no` and `ted above` in some contexts, but not always as was the case for `the` and `them`.  
-We can take advantage of that and remove all superset words $O(\|W\|^2)$. And then go through the block to find words of the second kind. We call those static and dynamic elimination respectively.
+We can take advantage of that and remove all superset words \\(O(\|W\|^2)\\). And then go through the block to find words of the second kind. We call those static and dynamic elimination respectively.
 What is left will be our dictionary.
 
 You can see that the compression rate depends on the ranking used, while time depends on the block size used.
@@ -56,7 +55,7 @@ Instead, what I decided to do is choose the highest ranked word, split the block
 
 ### 2. Ordering
 
-Choosing an ordered dictionary is in the heart of BWD. We can find an optimal one in ${O(\|W\|!)}$ time, but since $\|W\|$ is on the order of ${O(m^3({b\over m} - {2 \over 3}))}$, for block size $b$ and word limit $m$, this impractical.
+Choosing an ordered dictionary is in the heart of BWD. We can find an optimal one in \\({O(\|W\|!)}\\) time, but since \\(\|W\|\\) is on the order of \\({O(m^3({b\over m} - {2 \over 3}))}\\), for block size \\(b\\) and word limit \\(m\\), this impractical.
 
 The next best thing to bruteforce is bubble sort. We start with some order and check if switching the places of 2 words will give us an advantage. This makes some assumptions of how ordered dictionaries work, which are incorrect, but still give a good sub-optimal order - for example some group of words can be better together, than individually, but since we're making moves individual moves, groups won't be preserved. Also checking for an advantage can't be practically done by applying the algorithm for each order - it's done by a cost function, which gets as close to the real thing as a ranking would - read below.
 
@@ -67,18 +66,18 @@ Ranking the words to order them, gives them an individual value (which as explai
 The most intuitive approach, and also my first idea, was to see how many characters we're cutting off.
 We're essentially replacing a bunch of symbols with a single symbol. (The use of symbol, instead of character, or literal implies the connection to an entropy coder afterwards.)
 So it's intuitive to start with:  
-$r(w) = (\|w\| - 1) f(w),$  
-where $f(w)$ is the frequency in the input stream or occurences count. This ranking represents loss of information, just like entropy does - individual loss * frequency (or probability), so we must be on the right track.  
+\\(r(w) = (\|w\| - 1) f(w),\\)  
+where \\(f(w)\\) is the frequency in the input stream or occurences count. This ranking represents loss of information, just like entropy does - individual loss * frequency (or probability), so we must be on the right track.  
 Next we notice that some really long strings start to get ranked highly, when in fact their frequency is low, and they seem not as usable. We can correct that by remembering the dictionary gets encoded to the output as well -> we should substract 1 occurence, because we're gaining as much information:  
-$r(w) = (\|w\| - 1)f(w) - \|w\|$  
+\\(r(w) = (\|w\| - 1)f(w) - \|w\|\\)  
 But we can modify all ranks by a constant +1 to improve readability and aesthetics:  
-$r(w) = (\|w\| - 1)(f(w) - 1)$  
+\\(r(w) = (\|w\| - 1)(f(w) - 1)\\)  
 Very nice! But we're still not quite there.
 The ranking should assume we're replacing each word with 1 symbol, but we're relating it to count of characters, which are 8 bits each => unintentionally it's like we've been replacing each word with 1 literal, not symbol, i.e. 1 byte.  
-To fix that, we need to know how long the dictionary will be, therefore we must set a constant size for it, or try the algorithm for all dictionary sizes (not as impractical than $O(\|W\|!)$)  
-Either way, regardless of overall implementation of the algorithm, let's say we've chosen a dictionary size of $d = 2^r$, where $r = log_2(d)$ and represents our index size. Having a fixed index size of the dictionary (also called codeword for the word) stays blind to the ability of entropy coders to approximate entropy, **more research is needed to find an entropy based ranking algorithm.** Now we can calculate the loss, not in symbols, but bits:  
-$r(w)=(f(w) - 1)(\|w\|bpc - r),$  
-where $bpc$ is bits per character and is 8 for text files and for example 2 for genetic data.
+To fix that, we need to know how long the dictionary will be, therefore we must set a constant size for it, or try the algorithm for all dictionary sizes (not as impractical than \\(O(\|W\|!)\\))  
+Either way, regardless of overall implementation of the algorithm, let's say we've chosen a dictionary size of \\(d = 2^r\\), where \\(r = log_2(d)\\) and represents our index size. Having a fixed index size of the dictionary (also called codeword for the word) stays blind to the ability of entropy coders to approximate entropy, **more research is needed to find an entropy based ranking algorithm.** Now we can calculate the loss, not in symbols, but bits:  
+\\(r(w)=(f(w) - 1)(\|w\|bpc - r),\\)  
+where \\(bpc\\) is bits per character and is 8 for text files and for example 2 for genetic data.
 This is of yet, the best and most practical ranking algorithm.
 
 There does exist a complication when choosing a good dictionary, though - it may not cover the whole stream. Some individual characters may be left floating around alone, or in small groups. To fix that, we reserve an extra pattern word, that matches all consecutive characters (the supplementary to such a word, also called the `<s>` token in most of my notes, are the characters themselves, followed by an escape symbol, that switches the context back to words, or in this scenario ends the block).
@@ -87,13 +86,13 @@ There does exist a complication when choosing a good dictionary, though - it may
 
 As discussed above, optimality can be reached and will be reached in a finite amount of operations, but this remains impractical for now (quantum computers may give it a new breath, but until then...). When is optimality reached?
 We have to max all our constants:  
-$b=n, m=n,$ ordering is done in $O(\|W\|!)$ time, and all orderings are tried. This will for sure give us better results than most LZ implementations. Actually, before any proper testing (and with sub-optimal ordering) it is almost certain BWD is a better dictionary than most dynamic ones. When we take into account a complex group of patterns and context switching (both areas, where work is still needed), it will redefine the limits of a dictionary coder. More on that at [context splitting](#1b-context-splitting).
+\\(b=n, m=n,\\) ordering is done in \\(O(\|W\|!)\\) time, and all orderings are tried. This will for sure give us better results than most LZ implementations. Actually, before any proper testing (and with sub-optimal ordering) it is almost certain BWD is a better dictionary than most dynamic ones. When we take into account a complex group of patterns and context switching (both areas, where work is still needed), it will redefine the limits of a dictionary coder. More on that at [context splitting](#1b-context-splitting).
 
 Let's assume some dictionary is being used. We can calculate the compression ratio, fairly easily by counting the bits in the input in 2 ways - by characters and by words. (Please contact me for a full proof and more of my notes.) We'll end up with the following:  
 $$\Large
 \gamma = \log_{\alpha}d \times { {1}\over{\sum\limits_{w \in W}p(w)\|w\| } }
 $$
-For an alphabet ${A: \|A\| = \alpha,}$ dictionary of size $d$ and probability of word $\large {p(w): \sum\limits_{w \in W}p(w)=1}$  
+For an alphabet \\({A: \|A\| = \alpha,}\\) dictionary of size \\(d\\) and probability of word \\(\large {p(w): \sum\limits_{w \in W}p(w)=1}\\)  
 Which is oddly similiar to entropy, except we're dividing rather than substracting. The probability times the word length corresponds to the probability times optimal code length in entropy.
 
 If we somehow convert this metric to a ranking function, we'll have an optimality constraint and this will be proof that BWD gets asymptotically close to entropy, moreover it will prove BWD + entropy coder gets asymptotically closer to the compression limit than any LZ implementation paired with an entropy coder.
@@ -162,24 +161,10 @@ We select the best regions and calculate information loss. For each position of 
 
 I'll be brief with those, as I'm not sure they are very applicable.
 
-We split the alphabet of symbols $A$ into two disjoined stes of symbols:  
-$\large S_1 \cup S_2 = A, S_1 \cap S_2 = \emptyset$  
+We split the alphabet of symbols \\(A\\) into two disjoined stes of symbols:  
+\\(\large S_1 \cup S_2 = A, S_1 \cap S_2 = \emptyset\\)  
 All the words generated from those sets will be independent and can be ranked/ordered independently of the others in the final ranking/ordering.
 
 ### 1d. Independent words
 
 Since disjoined sets produce a lot of symbols and not enough independ words, we can try graph all prefixes and postfixes of words and find independent word pairs or groups. The end goal is again to simplify ordering/ranking. Although it's not actually a simplification in the bigger picture, when ranking/ordering we have less restrictions and can use better optimization algorithms to find an optimal ordering.
-
-<script>
-$("script[type='math/tex']").replaceWith(
-    function(){
-    var tex = $(this).text();
-    return "<span class=\"inline-equation\">" + katex.renderToString(tex) + "</span>";
-});
-      
-$("script[type='math/tex; mode=display']").replaceWith(
-    function(){
-    var tex = $(this).text();
-    return "<div class=\"equation\">" + katex.renderToString("\\displaystyle "+tex) + "</div>";
-});
-</script>

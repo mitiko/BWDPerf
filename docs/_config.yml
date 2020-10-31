@@ -3,4 +3,4 @@ name: Best Word Dictionary
 decription: BWD - Best Word Dictionary is a semi-dynamic dictionary coder built for optimal compression. BWD can use patterns and other context splitting mechanisms to lower down entropy.
 markdown: kramdown
 kramdown:
-  math_engine: mathjax
+  math_engine: null
