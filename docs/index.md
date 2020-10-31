@@ -131,7 +131,7 @@ Here are some proposals for matching symbols in patterns:
 | `*` | any character |
 | `*+` or `.` | any amount of characters |
 | `A` through `Z`, ie. uppercase letters | any repeating unique characters in a word |
-|              |               |
+
 
 _Examples_:  
 `the*` matches `them, the\x20, then, there, another, bother, father, mother, they, their, northern, prometheus`  
