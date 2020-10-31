@@ -98,7 +98,7 @@ $b=n, m=n,$ ordering is done in $O(\|W\|!)$ time, and all orderings are tried. T
 
 Let's assume some dictionary is being used. We can calculate the compression ratio, fairly easily by counting the bits in the input in 2 ways - by characters and by words. (Please contact me for a full proof and more of my notes.) We'll end up with the following:  
 $$\Large
-\gamma = \log_{\alpha}d \times {{1}\over{\sum\limits_{w \in W}p(w)\|w\|}}
+\gamma = \log_{\alpha}d \times { {1}\over{\sum\limits_{w \in W}p(w)\|w\| } }
 $$
 For an alphabet ${A: \|A\| = \alpha,}$ dictionary of size $d$ and probability of word $\large {p(w): \sum\limits_{w \in W}p(w)=1}$  
 Which is oddly similiar to entropy, except we're dividing rather than substracting. The probability times the word length corresponds to the probability times optimal code length in entropy.
