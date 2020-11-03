@@ -1,6 +1,6 @@
 # BWDPerf
 
-BWD stands for Best Word Dictionary as it has the ability to be an optimal dictionary coder.  
+BWD is a dictionary coder, that provides sub-optimal dictionaries and patterned words.
 
 ## Structure of the repository
 
