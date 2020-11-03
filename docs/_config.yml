@@ -1,6 +1,6 @@
 # Jekyll configuration
-name: Best Word Dictionary
-decription: BWD - Best Word Dictionary is a semi-dynamic dictionary coder built for optimal compression. BWD can use patterns and other context splitting mechanisms to lower down entropy.
+name: BWDPerf
+decription: BWD - A pattern based dictionary.
 markdown: kramdown
 kramdown:
   math_engine: null
