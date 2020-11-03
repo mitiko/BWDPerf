@@ -82,6 +82,8 @@ This is of yet, the best and most practical ranking algorithm.
 
 There does exist a complication when choosing a good dictionary, though - it may not cover the whole stream. Some individual characters may be left floating around alone, or in small groups. To fix that, we reserve an extra pattern word, that matches all consecutive characters (the supplementary to such a word, also called the `<s>` token in most of my notes, are the characters themselves, followed by an escape symbol, that switches the context back to words, or in this scenario ends the block).
 
+There does exist the idea that ranking can be done by a neural net, but I haven't found a good loss function representation to train it on. As to speedwise, the current ranking is pretty fast, and can actually be optimized with a lookup table.
+
 ### 3. Optimality
 
 As discussed above, optimality can be reached and will be reached in a finite amount of operations, but this remains impractical for now (quantum computers may give it a new breath, but until then...). When is optimality reached?
