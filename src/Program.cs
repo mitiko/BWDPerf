@@ -14,11 +14,10 @@ if (args.Length != 1)
 
 var timer = Stopwatch.StartNew();
 
-var task = new BufferedFileSource(args[0], 16 << 10, useProgressBar: false) // 16KB
+var task = new BufferedFileSource(args[0], 1 << 20, useProgressBar: false) // 1MB
     .ToCoder<byte[], byte[]>(new CapitalConversion())
-    .ToCoder<byte[], DictionaryIndex>(new BWD(16, 8, 8))
-    .ToCoder<DictionaryIndex, byte>(new MeasureEntropy())
-    .Serialize(new DiscardSerializer<byte>());
+    .ToCoder<byte[], DictionaryIndex>(new BWD(indexSize: 8, maxSizeWord: 24, decideToEnd: false))
+    .Serialize(new DiscardSerializer<DictionaryIndex>());
 
 await task;
 Console.WriteLine($"Elapsed: {timer.Elapsed}");

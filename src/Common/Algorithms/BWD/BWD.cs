@@ -1,6 +1,4 @@
 using System;
-using System.Buffers;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using BWDPerf.Common.Entities;
@@ -18,15 +16,17 @@ namespace BWDPerf.Common.Algorithms.BWD
         public int IndexSize { get; } // log_2(len(dict))
         public bool UseEndPattern { get; private set; }
         public Word EndPattern { get; }
+        public bool DecideToEnd { get; set; }
 
-        public BWD(int maxSizeWord = 16, int indexSize = 5, int bpc = 8)
+        public BWD(int maxSizeWord = 16, int indexSize = 5, int bpc = 8, bool decideToEnd = false)
         {
             this.MaxSizeWord = maxSizeWord;
             this.IndexSize = indexSize;
             this.BPC = bpc;
             this.Dictionary = new Word[1 << indexSize]; // len(dict) = 2^m
             this.Words = new();
-            this.EndPattern = new Word(new byte[0], 1, true);
+            this.EndPattern = new Word(new byte[0], 0, true);
+            this.DecideToEnd = decideToEnd;
         }
 
         async IAsyncEnumerable<DictionaryIndex> ICoder<byte[], DictionaryIndex>.Encode(IAsyncEnumerable<byte[]> input)
@@ -128,7 +128,7 @@ namespace BWDPerf.Common.Algorithms.BWD
                 }
             }
         }
-    
+
         private double Rank(Word word)
         {
             return (word.Size * this.BPC - this.IndexSize) * (word.Count - 1);
@@ -136,6 +136,7 @@ namespace BWDPerf.Common.Algorithms.BWD
 
         private double Loss(Word word)
         {
+            if (word.IsPattern) return - (this.IndexSize + this.BPC) * word.Count;
             return (word.Size * this.BPC - this.IndexSize) * (word.Count - 1) - this.IndexSize;
         }
 
@@ -160,7 +161,7 @@ namespace BWDPerf.Common.Algorithms.BWD
                             word = pair.Value;
                 }
             }
-            if (Loss(word) <= 0) // This is without ranking patterns, but uses them
+            if (Loss(word) <= 0 && this.DecideToEnd) // This is without ranking patterns, but uses them
                 return this.EndPattern;
             return word;
         }
@@ -180,6 +181,7 @@ namespace BWDPerf.Common.Algorithms.BWD
                     for (int i = 0; i < buff.Length; i++)
                         buff[i] = i < word.Size ? word.Content[i] : buffer[i - word.Size];
                     word.Content = buff;
+                    word.Count++;
                     continue;
                 }
                 for (int i = 0; i < buffer.Length; i++)
