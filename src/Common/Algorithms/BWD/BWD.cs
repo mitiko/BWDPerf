@@ -1,198 +1,215 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using BWDPerf.Common.Entities;
 using BWDPerf.Interfaces;
+using BWDPerf.Tools;
 
 namespace BWDPerf.Common.Algorithms.BWD
 {
     // Encode the buffer and pass it on as individual symbols or as blocks of indices
-    public class BWD : ICoder<byte[], DictionaryIndex>, ICoder<byte[], DictionaryIndex[]>
+    public class BWD : ICoder<byte[], DictionaryIndex[]>
     {
-        public int MaxSizeWord { get; } // m
-        public Dictionary<string, Word> Words { get; } // W
-        public Word[] Dictionary { get; } // dict
-        public int BPC { get; } // bpc - bits per character
-        public int IndexSize { get; } // log_2(len(dict))
-        public bool UseEndPattern { get; private set; }
-        public Word EndPattern { get; }
-        public bool DecideToEnd { get; set; }
+        public Options Options { get; set; }
+        public byte[][] Dictionary { get; }
+        public Dictionary<byte[], int> Words { get; set; }
+        public Dictionary<byte[], int> Freq { get; set; } = new(new ByteArrayComparer());
+        public byte[] SToken { get; set; }
+        public int STokenFrequency { get; set; }
 
-        public BWD(int maxSizeWord = 16, int indexSize = 5, int bpc = 8, bool decideToEnd = false)
+        public BWD(Options options)
         {
-            this.MaxSizeWord = maxSizeWord;
-            this.IndexSize = indexSize;
-            this.BPC = bpc;
-            this.Dictionary = new Word[1 << indexSize]; // len(dict) = 2^m
-            this.Words = new();
-            this.EndPattern = new Word(new byte[0], 0, true);
-            this.DecideToEnd = decideToEnd;
+            this.Options = options;
+            this.Dictionary = new byte[1 << options.IndexSize][]; // len(dict) = 2^m
+            this.SToken = new byte[0];
+            this.STokenFrequency = 0;
         }
 
-        async IAsyncEnumerable<DictionaryIndex> ICoder<byte[], DictionaryIndex>.Encode(IAsyncEnumerable<byte[]> input)
+        public async IAsyncEnumerable<DictionaryIndex[]> Encode(IAsyncEnumerable<byte[]> input)
         {
-            double savedBits = 0;
             await foreach (var buffer in input)
             {
-                Word word; int dictionarySize = 0;
-                var contexts = new List<byte[]>() { buffer };
-                for (int i = 0; i < this.Dictionary.Length; i++)
-                {
-                    GetAllWords(contexts);
-                    if (this.UseEndPattern && i == this.Dictionary.Length - 1)
-                        word = this.EndPattern;
-                    else
-                        word = GetHighestRankedWord();
+                var (usesSToken, dictionarySize, savedBits) = CalculateDictionary(buffer);
+                Console.WriteLine($"Saved: {savedBits}");
+                // Write dcitionary
 
-                    contexts = SplitByWord(contexts, ref word);
-                    this.Dictionary[i] = word;
-
-                    if (i == this.Dictionary.Length - 1 && contexts.Count > 0)
-                    {
-                        i--;
-                        if (!this.UseEndPattern) this.UseEndPattern = true;
-                        else throw new ApplicationException($"Not all information was encoded by BWD. Left - {contexts.Sum(x => x.Length)}");
-                        this.UseEndPattern = true;
-                    }
-
-                    if (contexts.Count == 0)
-                    {
-                        dictionarySize = i + 1;
-                        if (Math.Ceiling(Math.Log2(i+1)) < this.IndexSize)
-                            Console.WriteLine($"BWD index was too high. Set to {this.IndexSize}, but completed with {dictionarySize} of {1 << this.IndexSize} words. Try using {Math.Ceiling(Math.Log2(dictionarySize))}");
-                        break;
-                    }
-                }
-
-                if (this.UseEndPattern) Console.WriteLine("Forced to use a pattern to finish compression.");
-                else if (this.Dictionary[dictionarySize-1].IsPattern) Console.WriteLine("Decided to use a pattern to minimize loss.");
-                Console.WriteLine("Computed optimal dictionary:");
+                var fileWriter = new BinaryWriter(new FileInfo($"dictionary{this.GetHashCode()}.bwd.dict").OpenWrite());
+                fileWriter.Write(dictionarySize);
                 for (int i = 0; i < dictionarySize; i++)
                 {
-                    word = this.Dictionary[i];
-                    Console.WriteLine($"{word.Size} -- \"{word.ToString()}\" with loss of {Loss(word)} bits");
-                    for (int j = 0; j < word.Count; j++)
-                    {
-                        if (word.IsPattern)
-                        {
-                            for (int k = 0; k < word.Size; k++)
-                                yield return new DictionaryIndex() { Index = i };
-                            break;
-                        }
-                        yield return new DictionaryIndex() { Index = i };
-                    }
+                    var word = this.Dictionary[i];
+                    fileWriter.Write((byte) word.Length);
+                    fileWriter.Write(word);
                 }
-                savedBits += this.Dictionary.Take(dictionarySize).Select(x => Loss(x)).Sum();
-                // Output dictionary
-                // Split by dictionary into index buffer
-                // return indices in order
-                yield return default;
-                // break;
+                fileWriter.Flush();
+                fileWriter.Dispose();
+                // Split by dictionary
+                // write indices
+                // yield return default;
+                var dict = new DictionaryIndex[dictionarySize];
+                for (int i = 0; i < dictionarySize; i++)
+                {
+                    var word = this.Dictionary[i];
+                    dict[i] = new DictionaryIndex(i, this.Freq[word]);
+                }
+                yield return dict;
             }
-            Console.WriteLine($"Saved {savedBits} bits!");
         }
 
-        async IAsyncEnumerable<DictionaryIndex[]> ICoder<byte[], DictionaryIndex[]>.Encode(IAsyncEnumerable<byte[]> input)
+        private (bool usesSToken, int dictionarySize, int savedBits) CalculateDictionary(byte[] buffer)
         {
-            await System.Threading.Tasks.Task.Delay(1);
-            yield return default;
-            throw new NotImplementedException();
+            // The initial context is the whole buffer
+            var contexts = new List<byte[]>() { buffer };
+            bool usesSToken = false; int dictionarySize = 0;
+            // Initialize words -> O(m^3 * (b/m - 2/3))
+            GetAllWords(buffer);
+            int savedBits = 0;
+            for (int i = 0; i < this.Dictionary.Length; i++)
+            {
+                // Get the best word
+                var word = GetHighestRankedWord(ref usesSToken);
+                // Split by word and save it to dictionary
+                contexts = SplitByWord(contexts, word, usesSToken);
+                this.Dictionary[i] = word;
+                this.Freq[word] = usesSToken ? this.STokenFrequency : this.Words[word];
+                savedBits += Loss(word, usesSToken);
+
+                // If reached the end of the dictionary and more data is left,
+                // re-run the last iteration with the SToken
+                Console.WriteLine($"{i} --- {Loss(word, usesSToken)} --- \"{Print(word, usesSToken)}\"");
+                if (i == this.Dictionary.Length - 1 && contexts.Count > 0)
+                { i--; usesSToken = true; } // TODO: Changes the contexts and then the s token is applied, making decompression impossible
+
+                // If we've got no data left to encode, save dictionary size
+                if (contexts.Count == 0)
+                { dictionarySize = i + 1; break; }
+
+                // Select words for the next iteration
+                // SelectWords(contexts, word);
+                SelectWords(contexts);
+            }
+
+            return (usesSToken, dictionarySize, savedBits);
         }
 
-        private void GetAllWords(List<byte[]> contexts)
+        private string Print(byte[] word, bool isSToken)
         {
-            this.Words.Clear();
-            int start, end; Word word; string w;
+            if (isSToken) return "<s>";
+            string str = "";
+            foreach (var s in word)
+            {
+                str += (char) s;
+            }
+            return str;
+        }
+
+        private void GetAllWords(byte[] buffer)
+        {
+            this.Words = new(new ByteArrayComparer());
+            int start, end; byte[] word;
+
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                start = i;
+                for (int j = 1; j <= this.Options.MaxWordSize; j++)
+                {
+                    end = start + j;
+                    if (end > buffer.Length) break;
+
+                    word = buffer[start..end];
+                    if (this.Words.ContainsKey(word)) this.Words[word] += 1;
+                    else this.Words.Add(word, 1);
+                }
+            }
+        }
+
+        private void SelectWords(List<byte[]> contexts)
+        {
+            this.Words = new(new ByteArrayComparer());
+            int start, end; byte[] word;
+
             foreach (var buffer in contexts)
             {
                 for (int i = 0; i < buffer.Length; i++)
                 {
                     start = i;
-                    for (int j = 1; j <= this.MaxSizeWord; j++)
+                    for (int j = 1; j <= this.Options.MaxWordSize; j++)
                     {
                         end = start + j;
                         if (end > buffer.Length) break;
 
-                        word = new Word(buffer[start..end], 1);
-                        w = word.ToString();
-                        if (this.Words.ContainsKey(w))
-                        {
-                            word.Count = this.Words[w].Count + 1;
-                            this.Words[w] = word;
-                        }
-                        else
-                        {
-                            this.Words.Add(w, word);
-                        }
+                        word = buffer[start..end];
+                        if (this.Words.ContainsKey(word)) this.Words[word] += 1;
+                        else this.Words.Add(word, 1);
                     }
                 }
             }
         }
 
-        private double Rank(Word word)
+        private int Rank(byte[] word)
         {
-            return (word.Size * this.BPC - this.IndexSize) * (word.Count - 1);
+            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (this.Words[word] - 1);
         }
 
-        private double Loss(Word word)
+        private int Loss(byte[] word, bool isSToken = false)
         {
-            if (word.IsPattern) return - (this.IndexSize + this.BPC) * word.Count;
-            return (word.Size * this.BPC - this.IndexSize) * (word.Count - 1) - this.IndexSize;
+            if (isSToken && this.STokenFrequency == 0) return - this.Options.IndexSize;
+            if (isSToken) return - (this.Options.IndexSize + this.Options.BPC) * this.STokenFrequency;
+            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (this.Words[word] - 1) - this.Options.IndexSize;
         }
 
-        private Word GetHighestRankedWord()
+        private byte[] GetHighestRankedWord(ref bool usesSToken)
         {
-            var word = this.Words.First().Value;
-            double rank, newRank;
-            rank = Rank(word);
-            foreach (var pair in this.Words)
+            var bestWord = this.Words.First().Key;
+            int rank, newRank;
+            rank = Rank(bestWord);
+            foreach (var word in this.Words.Keys)
             {
-                newRank = Rank(pair.Value);
+                newRank = Rank(word);
                 if (newRank > rank)
-                {
-                    word = pair.Value;
-                    rank = newRank;
-                }
-                if (newRank == rank)
-                {
-                    if (pair.Value.Count > word.Count) word = pair.Value;
-                    if (pair.Value.Count == word.Count)
-                        if (pair.Value.Size > word.Size)
-                            word = pair.Value;
-                }
+                { bestWord = word; rank = newRank; }
+                if (newRank == rank && this.Words[word] >= this.Words[bestWord])
+                { bestWord = word; }
             }
-            if (Loss(word) <= 0 && this.DecideToEnd) // This is without ranking patterns, but uses them
-                return this.EndPattern;
-            return word;
+
+            if (Loss(bestWord) <= Loss(this.SToken, true) && this.Options.AutoEnd)
+                usesSToken = true;
+
+            if (usesSToken)
+                return this.SToken;
+
+            return bestWord;
         }
 
-        private List<byte[]> SplitByWord(List<byte[]> contexts, ref Word word)
+        private List<byte[]> SplitByWord(List<byte[]> contexts, byte[] word, bool usesSToken)
         {
             var result = new List<byte[]>();
-            int start, count;
-            var w = word.Content;
             foreach (var buffer in contexts)
             {
-                start = 0;
-                count = 0;
-                if (word.IsPattern)
+                if (usesSToken)
                 {
-                    var buff = new byte[word.Size + buffer.Length];
-                    for (int i = 0; i < buff.Length; i++)
-                        buff[i] = i < word.Size ? word.Content[i] : buffer[i - word.Size];
-                    word.Content = buff;
-                    word.Count++;
+                    this.SToken = this.SToken.Concat(buffer).ToArray();
+                    this.STokenFrequency++;
                     continue;
                 }
+
+                int start = 0, count = 0;
                 for (int i = 0; i < buffer.Length; i++)
                 {
-                    count = w[count] == buffer[i] ? count + 1 : 0;
-                    // If match or end of buffer
-                    if (count == w.Length || i == buffer.Length - 1)
+                    count = word[count] == buffer[i] ? count + 1 : 0;
+                    // If match
+                    if (count == word.Length)
                     {
                         var buff = buffer[start..(i-count+1)];
                         if (buff.Length > 0) result.Add(buff);
-                        count = 0; start = i+1;
+                        start = i+1; count = 0; continue;
+                    }
+
+                    // If end of buffer
+                    if (i == buffer.Length - 1)
+                    {
+                        result.Add(buffer[start..]);
                     }
                 }
             }

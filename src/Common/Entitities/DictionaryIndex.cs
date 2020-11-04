@@ -5,6 +5,12 @@ namespace BWDPerf.Common.Entities
     public struct DictionaryIndex
     {
         public int Index { get; set; }
-        public int BitsToUse { get; set; }
+        public int BitsToUse { get; }
+
+        public DictionaryIndex(int index, int bitsToUse)
+        {
+            this.Index = index;
+            this.BitsToUse = bitsToUse;
+        }
     }
 }
