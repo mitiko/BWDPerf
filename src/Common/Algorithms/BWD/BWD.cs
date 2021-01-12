@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using BWDPerf.Common.Entities;
@@ -14,7 +15,7 @@ namespace BWDPerf.Common.Algorithms.BWD
         public Options Options { get; set; }
         public byte[][] Dictionary { get; }
         public Dictionary<byte[], int> Words { get; set; }
-        public Dictionary<byte[], int> Freq { get; set; } = new(new ByteArrayComparer());
+        // public Dictionary<int, int> Arr { get; set; }
         public byte[] SToken { get; set; }
         public int STokenFrequency { get; set; }
 
@@ -28,18 +29,32 @@ namespace BWDPerf.Common.Algorithms.BWD
 
         public async IAsyncEnumerable<DictionaryIndex[]> Encode(IAsyncEnumerable<byte[]> input)
         {
+            int k = 0;
+            int totalSaved = 0;
             await foreach (var buffer in input)
             {
                 var (usesSToken, dictionarySize, savedBits) = CalculateDictionary(buffer);
-                Console.WriteLine($"Saved: {savedBits}");
+                totalSaved += savedBits;
+                Console.WriteLine($"Saved {savedBits} on {k} iteration");
                 // Write dcitionary
 
-                var fileWriter = new BinaryWriter(new FileInfo($"dictionary{this.GetHashCode()}.bwd.dict").OpenWrite());
+                var fileWriter = new BinaryWriter(new FileInfo($"dictionary-{k}-{this.GetHashCode()}.bwd.dict").OpenWrite());
                 fileWriter.Write(dictionarySize);
                 for (int i = 0; i < dictionarySize; i++)
                 {
                     var word = this.Dictionary[i];
-                    fileWriter.Write((byte) word.Length);
+                    if (usesSToken && i == dictionarySize-1)
+                    {
+                        fileWriter.Write('7');
+                        fileWriter.Write('7');
+                        fileWriter.Write('7');
+                        fileWriter.Write(this.SToken.Length);
+                        foreach (var character in this.SToken) fileWriter.Write(character);
+                    }
+                    else
+                    {
+                        fileWriter.Write((byte) word.Length);
+                    }
                     fileWriter.Write(word);
                 }
                 fileWriter.Flush();
@@ -51,28 +66,37 @@ namespace BWDPerf.Common.Algorithms.BWD
                 for (int i = 0; i < dictionarySize; i++)
                 {
                     var word = this.Dictionary[i];
-                    dict[i] = new DictionaryIndex(i, this.Freq[word]);
+                    dict[i] = new DictionaryIndex(i, usesSToken ? this.STokenFrequency : this.Words[word]);
                 }
                 yield return dict;
+                k++;
             }
+            Console.WriteLine($"Saved: {totalSaved}");
         }
 
         private (bool usesSToken, int dictionarySize, int savedBits) CalculateDictionary(byte[] buffer)
         {
+            var timer = Stopwatch.StartNew();
             // The initial context is the whole buffer
             var contexts = new List<byte[]>() { buffer };
             bool usesSToken = false; int dictionarySize = 0;
             // Initialize words -> O(m^3 * (b/m - 2/3))
             GetAllWords(buffer);
+            Console.WriteLine($"First taking of words took: {timer.Elapsed}");
+            timer.Restart();
             int savedBits = 0;
             for (int i = 0; i < this.Dictionary.Length; i++)
             {
                 // Get the best word
                 var word = GetHighestRankedWord(ref usesSToken);
+                Console.WriteLine($"Getting highest ranked word took: {timer.Elapsed}");
+                timer.Restart();
                 // Split by word and save it to dictionary
                 contexts = SplitByWord(contexts, word, usesSToken);
+                Console.WriteLine($"Splitting took: {timer.Elapsed}");
+                timer.Restart();
                 this.Dictionary[i] = word;
-                this.Freq[word] = usesSToken ? this.STokenFrequency : this.Words[word];
+                // this.Freq[word] = usesSToken ? this.STokenFrequency : this.Words[word];
                 savedBits += Loss(word, usesSToken);
 
                 // If reached the end of the dictionary and more data is left,
@@ -88,6 +112,8 @@ namespace BWDPerf.Common.Algorithms.BWD
                 // Select words for the next iteration
                 // SelectWords(contexts, word);
                 SelectWords(contexts);
+                Console.WriteLine($"Seconf selection took {timer.Elapsed}");
+                timer.Restart();
             }
 
             return (usesSToken, dictionarySize, savedBits);

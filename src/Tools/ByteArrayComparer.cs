@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 namespace BWDPerf.Tools
 {
@@ -13,8 +14,7 @@ namespace BWDPerf.Tools
 
         public int GetHashCode(byte[] key)
         {
-            if (key == null) return 0;
-            return key.Sum(b => b);
+            return new BigInteger(key).GetHashCode();
         }
     }
 }
