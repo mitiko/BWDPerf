@@ -150,7 +150,6 @@ namespace BWDPerf.Common.Algorithms.BWD
 
             for (int j = 0; j < buffer.Length; j++)
             {
-                if ( j % 1_000 == 0) Console.WriteLine($"position = {j}");
                 int startSearch = j - 1; // just a DP hack for faster search, otherwise set to a constant j-1
 bool absolute = false;
                 for (int i = 0; i < this.WordRef.Length; i++)
@@ -223,18 +222,15 @@ if (this.WordRef[i][j] == j) absolute = true;
 
                 for (int i = 0; i < this.WordRef.Length; i++)
                 {
-                    for (int j = 0; j < this.WordRef[i].Length; j++)
-                    {
-                        // Define start and end of exclusion region
-                        int start = l - i;
-                        int end = l + word.Length - 1 + i;
-                        // Enforce bounds
-                        start = start >= 0 ? start : 0;
-                        end = end < this.WordRef[i].Length ? end : this.WordRef[i].Length - 1;
-                        // Mark as unavailable
-                        for (int s = start; s <= end; s++)
-                            this.WordRef[i][s] = -1;
-                    }
+                    // Define start and end of exclusion region
+                    int start = l - i;
+                    int end = l + word.Length - 1 + i;
+                    // Enforce bounds
+                    start = start >= 0 ? start : 0;
+                    end = end < this.WordRef[i].Length ? end : this.WordRef[i].Length - 1;
+                    // Mark as unavailable
+                    for (int s = start; s <= end; s++)
+                        this.WordRef[i][s] = -1;
                 }
             }
         }
