@@ -92,32 +92,35 @@ namespace BWDPerf.Common.Algorithms.BWD
             {
                 bool isLastWord = i == this.Dictionary.Length - 1;
                 Word word;
-                if (!isLastWord)
-                {
-                    // Get the best word
-                    word = GetHighestRankedWord();
-                    Console.WriteLine($"Getting highest ranked word took: {timer.Elapsed}");
-                    timer.Restart();
-                    // Split by word and save it to dictionary
-                    SplitByWord(in buffer, word);
-                    Console.WriteLine($"Splitting took: {timer.Elapsed}");
-                    timer.Restart();
-                    // Count new occurences
-                    CountWords(in buffer);
-                    Console.WriteLine($"Counting the words took: {timer.Elapsed}");
-                    timer.Restart();
-                }
-                else
+                if (isLastWord)
                 {
                     CollectSTokenData(in buffer);
-                    word = this.SToken;
+                    this.Dictionary[i] = this.STokenData;
+                    expectedSavedBits += Loss(this.SToken, isLastWord);
+                    Console.WriteLine($"{i} --- {Loss(this.SToken, isLastWord)} --- \"{Print(this.Dictionary[i], isLastWord)}\"");
+                    dictionarySize = i + 1;
+                    break;
                 }
+
+                // Get the best word
+                word = GetHighestRankedWord();
+                Console.WriteLine($"Getting highest ranked word took: {timer.Elapsed}");
+                timer.Restart();
 
                 // Save the chosen word
                 this.Dictionary[i] = isLastWord ? this.STokenData : buffer[word.Location..(word.Location + word.Length)];
                 // Calculate estimated savings
                 expectedSavedBits += Loss(word, isLastWord);
                 Console.WriteLine($"{i} --- {Loss(word, isLastWord)} --- \"{Print(this.Dictionary[i], isLastWord)}\"");
+
+                // Split by word and save it to dictionary
+                SplitByWord(in buffer, word);
+                Console.WriteLine($"Splitting took: {timer.Elapsed}");
+                timer.Restart();
+                // Count new occurences
+                CountWords(in buffer);
+                Console.WriteLine($"Counting the words took: {timer.Elapsed}");
+                timer.Restart();
 
                 // When all references have been encoded, save the dictionary size and exit
                 if (this.Count.Values.Sum() == 0)
@@ -147,7 +150,9 @@ namespace BWDPerf.Common.Algorithms.BWD
 
             for (int j = 0; j < buffer.Length; j++)
             {
+                if ( j % 1_000 == 0) Console.WriteLine($"position = {j}");
                 int startSearch = j - 1; // just a DP hack for faster search, otherwise set to a constant j-1
+bool absolute = false;
                 for (int i = 0; i < this.WordRef.Length; i++)
                 {
                     int len = i + 1;
@@ -157,6 +162,7 @@ namespace BWDPerf.Common.Algorithms.BWD
 
                     for (int index = startSearch; index >= 0; index--)
                     {
+if (absolute && index != startSearch) break;
                         int end = index + len; // start + len;
                         if (end >= j) continue; // if the words overlap, no match can be found
                         selection = buffer[index..end]; // select the search region
@@ -170,7 +176,8 @@ namespace BWDPerf.Common.Algorithms.BWD
                     }
 
                     // If no match has been found, set this as the first occurence
-                    this.WordRef[i][j] = matchIndex != -1 ? matchIndex : j;
+                    this.WordRef[i][j] = matchIndex != -1 ? this.WordRef[i][matchIndex] : j;
+if (this.WordRef[i][j] == j) absolute = true;
                     // Remember that the first backwards match of this length from this location is at this index;
                     startSearch = this.WordRef[i][j];
                 }
@@ -211,18 +218,19 @@ namespace BWDPerf.Common.Algorithms.BWD
             for (int l = 0; l < buffer.Length; l++)
             {
                 // Find all locations of this word l
+                if (l + word.Length >= buffer.Length) break;
                 if (this.WordRef[word.Length - 1][l] != word.Location) continue;
 
-                for (int j = 0; j < buffer.Length; j++)
+                for (int i = 0; i < this.WordRef.Length; i++)
                 {
-                    for (int i = 0; i < this.WordRef.Length; i++)
+                    for (int j = 0; j < this.WordRef[i].Length; j++)
                     {
                         // Define start and end of exclusion region
                         int start = l - i;
                         int end = l + word.Length - 1 + i;
                         // Enforce bounds
                         start = start >= 0 ? start : 0;
-                        end = end < buffer.Length ? end : buffer.Length - 1;
+                        end = end < this.WordRef[i].Length ? end : this.WordRef[i].Length - 1;
                         // Mark as unavailable
                         for (int s = start; s <= end; s++)
                             this.WordRef[i][s] = -1;
@@ -234,10 +242,9 @@ namespace BWDPerf.Common.Algorithms.BWD
         private void CountWords(in byte[] buffer)
         {
             this.Count.Clear();
-
-            for (int j = 0; j < buffer.Length; j++)
+            for (int i = 0; i < this.WordRef.Length; i++)
             {
-                for (int i = 0; i < this.WordRef.Length; i++)
+                for (int j = 0; j < this.WordRef[i].Length; j++)
                 {
                     if (this.WordRef[i][j] != j && this.WordRef[i][j] != -1)
                         this.Count.Add(new Word(this.WordRef[i][j], i + 1));

@@ -12,17 +12,17 @@ using System.Collections.Generic;
 Console.WriteLine("Started");
 
 if (args.Length != 1)
-    args = new string[] { "../data/file.md" };
+    args = new string[] { "../data/enwik4" };
 
 var timer = Stopwatch.StartNew();
 
-var task = new BufferedFileSource(args[0], 1_000, useProgressBar: false) // 1KB
+var task = new BufferedFileSource(args[0], 1_000_000, useProgressBar: false) // 1MB
     .ToCoder<byte[], byte[]>(new CapitalConversion())
-    .ToCoder(new BWD(new Options(indexSize: 4, maxWordSize: 16)))
+    .ToCoder(new BWD(new Options(indexSize: 6, maxWordSize: 12)))
     .ToCoder(new Unbuffer<DictionaryIndex>())
     .ToCoder(new DictionaryToBytes())
     .ToCoder(new MeasureEntropy())
-    .Serialize(new SerializeToFile("file.bwd"));
+    .Serialize(new SerializeToFile("enwik4.bwd"));
 
 
 await task;
