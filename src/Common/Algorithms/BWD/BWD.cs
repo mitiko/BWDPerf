@@ -15,7 +15,7 @@ namespace BWDPerf.Common.Algorithms.BWD
         public Options Options { get; set; }
         public byte[][] Dictionary { get; }
         public Dictionary<byte[], int> Words { get; set; }
-        // public Dictionary<int, int> Arr { get; set; }
+        public int[][] Arr { get; set; }
         public byte[] SToken { get; set; }
         public int STokenFrequency { get; set; }
 
@@ -23,6 +23,7 @@ namespace BWDPerf.Common.Algorithms.BWD
         {
             this.Options = options;
             this.Dictionary = new byte[1 << options.IndexSize][]; // len(dict) = 2^m
+            this.Arr = new int[options.IndexSize][];
             this.SToken = new byte[0];
             this.STokenFrequency = 0;
         }
@@ -33,7 +34,7 @@ namespace BWDPerf.Common.Algorithms.BWD
             int totalSaved = 0;
             await foreach (var buffer in input)
             {
-                var (usesSToken, dictionarySize, savedBits) = CalculateDictionary(buffer);
+                var (usesSToken, dictionarySize, savedBits) = CalculateDictionary(in buffer);
                 totalSaved += savedBits;
                 Console.WriteLine($"Saved {savedBits} on {k} iteration");
                 // Write dcitionary
@@ -74,14 +75,17 @@ namespace BWDPerf.Common.Algorithms.BWD
             Console.WriteLine($"Saved: {totalSaved}");
         }
 
-        private (bool usesSToken, int dictionarySize, int savedBits) CalculateDictionary(byte[] buffer)
+        private (bool usesSToken, int dictionarySize, int savedBits) CalculateDictionary(in byte[] buffer)
         {
             var timer = Stopwatch.StartNew();
+            for (int i = 0; i < this.Arr.Length; i++)
+                this.Arr[i] = new int[buffer.Length];
             // The initial context is the whole buffer
+            // TODO: Eliminate contexts entirely
             var contexts = new List<byte[]>() { buffer };
             bool usesSToken = false; int dictionarySize = 0;
             // Initialize words -> O(m^3 * (b/m - 2/3))
-            GetAllWords(buffer);
+            GetAllWords(in buffer);
             Console.WriteLine($"First taking of words took: {timer.Elapsed}");
             timer.Restart();
             int savedBits = 0;
@@ -130,22 +134,36 @@ namespace BWDPerf.Common.Algorithms.BWD
             return str;
         }
 
-        private void GetAllWords(byte[] buffer)
+        private void GetAllWords(in byte[] buffer)
         {
-            this.Words = new(new ByteArrayComparer());
-            int start, end; byte[] word;
-
-            for (int i = 0; i < buffer.Length; i++)
+            for (int j = 0; j < buffer.Length; j++)
             {
-                start = i;
-                for (int j = 1; j <= this.Options.MaxWordSize; j++)
+                int startSearch = j - 1; // just a hack for faster search, otherwise set to a constant j-1
+                for (int i = 0; i < this.Arr.Length; i++)
                 {
-                    end = start + j;
-                    if (end > buffer.Length) break;
+                    int len = i + 1;
+                    if (j + len > buffer.Length) break; // if there's no space for the current word, we just skip
+                    byte[] selection = new byte[len]; // initialize the selection window before the loop
+                    int matchIndex = -1;
 
-                    word = buffer[start..end];
-                    if (this.Words.ContainsKey(word)) this.Words[word] += 1;
-                    else this.Words.Add(word, 1);
+                    for (int index = startSearch; index >= 0; index--)
+                    {
+                        int end = index + len; // start + len;
+                        if (end >= j) continue; // if the words overlap, no match can be found
+                        selection = buffer[index..end]; // select the search region
+
+                        // Check if selection matches the word at j by comparing them.
+                        bool match = true;
+                        for (int s = 0; s < len; s++)
+                            if (selection[s] != buffer[j+s]) { match = false; break; }
+
+                        if (match) { matchIndex = index; break; }
+                    }
+
+                    // If no match has been found, set this as the first occurence
+                    this.Arr[i][j] = matchIndex != -1 ? matchIndex : j;
+                    // Remember that the first backwards match of this length from this location is at this index;
+                    startSearch = this.Arr[i][j];
                 }
             }
         }
