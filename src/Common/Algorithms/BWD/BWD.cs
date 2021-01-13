@@ -14,7 +14,7 @@ namespace BWDPerf.Common.Algorithms.BWD
     {
         public Options Options { get; set; }
         public byte[][] Dictionary { get; }
-        public CountDictionary<Word> Count { get; set; }
+        public OccurenceDictionary<Word> Count { get; set; }
         public int[][] WordRef { get; set; }
         public byte[] STokenData { get; set; }
         public Word SToken { get; set; }
@@ -25,7 +25,7 @@ namespace BWDPerf.Common.Algorithms.BWD
             this.Dictionary = new byte[1 << options.IndexSize][]; // len(dict) = 2^m
             this.WordRef = new int[options.IndexSize][];
             // This is a measure of repating count. The actual real count is always with one more.
-            this.Count = new CountDictionary<Word>();
+            this.Count = new OccurenceDictionary<Word>();
             this.STokenData = new byte[0];
             this.SToken = new Word(-1, 0);
         }
@@ -150,8 +150,9 @@ namespace BWDPerf.Common.Algorithms.BWD
 
             for (int j = 0; j < buffer.Length; j++)
             {
+                if (j % 10_000 == 0) Console.WriteLine($"position: {j}");
                 int startSearch = j - 1; // just a DP hack for faster search, otherwise set to a constant j-1
-bool absolute = false;
+                bool absolute = false;
                 for (int i = 0; i < this.WordRef.Length; i++)
                 {
                     int len = i + 1;
@@ -161,9 +162,9 @@ bool absolute = false;
 
                     for (int index = startSearch; index >= 0; index--)
                     {
-if (absolute && index != startSearch) break;
+                        if (absolute && index != startSearch) break;
                         int end = index + len; // start + len;
-                        if (end >= j) continue; // if the words overlap, no match can be found
+                        if (end > j) continue; // if the words overlap, no match can be found
                         selection = buffer[index..end]; // select the search region
 
                         // Check if selection matches the word at j by comparing them.
@@ -176,23 +177,23 @@ if (absolute && index != startSearch) break;
 
                     // If no match has been found, set this as the first occurence
                     this.WordRef[i][j] = matchIndex != -1 ? this.WordRef[i][matchIndex] : j;
-if (this.WordRef[i][j] == j) absolute = true;
+                    if (this.WordRef[i][j] == j) absolute = true;
                     // Remember that the first backwards match of this length from this location is at this index;
-                    startSearch = this.WordRef[i][j];
+                    startSearch = matchIndex != -1 ? matchIndex : j;
                 }
             }
         }
 
         private int Rank(Word word)
         {
-            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (this.Count[word]);
+            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (this.Count[word] - 1);
         }
 
         private int Loss(Word word, bool isLastWord = false)
         {
             if (isLastWord && this.Count[word] == 0) return - this.Options.IndexSize;
-            if (isLastWord) return - (this.Options.IndexSize + this.Options.BPC) * (this.Count[word] + 1);
-            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (this.Count[word]) - this.Options.IndexSize;
+            if (isLastWord) return - (this.Options.IndexSize + this.Options.BPC) * this.Count[word];
+            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (this.Count[word] - 1) - this.Options.IndexSize;
         }
 
         private Word GetHighestRankedWord()
@@ -205,7 +206,6 @@ if (this.WordRef[i][j] == j) absolute = true;
                 newRank = Rank(word);
                 if (newRank > rank) { bestWord = word; rank = newRank; }
                 // TODO: Make considerations on the contexts from which the words were taken
-                // This comparison of counts is relative so it doesn't matter that the actual count is with 1 less
                 if (newRank == rank && this.Count[word] >= this.Count[bestWord]) { bestWord = word; }
             }
 
@@ -214,17 +214,22 @@ if (this.WordRef[i][j] == j) absolute = true;
 
         private void SplitByWord(in byte[] buffer, Word word)
         {
-            for (int l = 0; l < buffer.Length; l++)
+            var locations = new int[this.Count[word]]; int x = 0;
+            for (int j = 0; j < buffer.Length; j++)
             {
                 // Find all locations of this word l
-                if (l + word.Length >= buffer.Length) break;
-                if (this.WordRef[word.Length - 1][l] != word.Location) continue;
+                if (j >= this.WordRef[word.Length - 1].Length) break;
+                if (this.WordRef[word.Length - 1][j] != word.Location) continue;
+                locations[x++] = j;
+            }
 
+            for (int l = 0; l < locations.Length; l++)
+            {
                 for (int i = 0; i < this.WordRef.Length; i++)
                 {
                     // Define start and end of exclusion region
-                    int start = l - i;
-                    int end = l + word.Length - 1 + i;
+                    int start = locations[l] - i;
+                    int end = locations[l] + word.Length - 1 + i;
                     // Enforce bounds
                     start = start >= 0 ? start : 0;
                     end = end < this.WordRef[i].Length ? end : this.WordRef[i].Length - 1;
@@ -242,7 +247,7 @@ if (this.WordRef[i][j] == j) absolute = true;
             {
                 for (int j = 0; j < this.WordRef[i].Length; j++)
                 {
-                    if (this.WordRef[i][j] != j && this.WordRef[i][j] != -1)
+                    if (this.WordRef[i][j] != -1)
                         this.Count.Add(new Word(this.WordRef[i][j], i + 1));
                 }
             }
