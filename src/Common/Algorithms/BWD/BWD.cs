@@ -14,8 +14,8 @@ namespace BWDPerf.Common.Algorithms.BWD
     {
         public Options Options { get; set; }
         public byte[][] Dictionary { get; }
-        public Dictionary<byte[], int> Words { get; set; }
-        public int[][] Arr { get; set; }
+        public CountDictionary<Word> Count { get; set; }
+        public int[][] WordRef { get; set; }
         public byte[] SToken { get; set; }
         public int STokenFrequency { get; set; }
 
@@ -23,7 +23,9 @@ namespace BWDPerf.Common.Algorithms.BWD
         {
             this.Options = options;
             this.Dictionary = new byte[1 << options.IndexSize][]; // len(dict) = 2^m
-            this.Arr = new int[options.IndexSize][];
+            this.WordRef = new int[options.IndexSize][];
+            // TODO: Add initial count to the creation of a count dictionary so we can just pretend the count is 1 less than actual and save calculations in the ranking
+            this.Count = new CountDictionary<Word>();
             this.SToken = new byte[0];
             this.STokenFrequency = 0;
         }
@@ -86,7 +88,7 @@ namespace BWDPerf.Common.Algorithms.BWD
             for (int i = 0; i < this.Dictionary.Length; i++)
             {
                 // Count occurences
-                // TODO: count occurences
+                CountWords(in buffer);
                 // Get the best word
                 var word = GetHighestRankedWord(ref usesSToken);
                 Console.WriteLine($"Getting highest ranked word took: {timer.Elapsed}");
@@ -127,13 +129,13 @@ namespace BWDPerf.Common.Algorithms.BWD
         private void FindAllMatchingWords(in byte[] buffer)
         {
             // Initialize the matrix
-            for (int i = 0; i < this.Arr.Length; i++)
-                this.Arr[i] = new int[buffer.Length - i];
+            for (int i = 0; i < this.WordRef.Length; i++)
+                this.WordRef[i] = new int[buffer.Length - i];
 
             for (int j = 0; j < buffer.Length; j++)
             {
                 int startSearch = j - 1; // just a hack for faster search, otherwise set to a constant j-1
-                for (int i = 0; i < this.Arr.Length; i++)
+                for (int i = 0; i < this.WordRef.Length; i++)
                 {
                     int len = i + 1;
                     if (j + len > buffer.Length) break; // if there's no space for the current word, we just skip
@@ -155,9 +157,9 @@ namespace BWDPerf.Common.Algorithms.BWD
                     }
 
                     // If no match has been found, set this as the first occurence
-                    this.Arr[i][j] = matchIndex != -1 ? matchIndex : j;
+                    this.WordRef[i][j] = matchIndex != -1 ? matchIndex : j;
                     // Remember that the first backwards match of this length from this location is at this index;
-                    startSearch = this.Arr[i][j];
+                    startSearch = this.WordRef[i][j];
                 }
             }
         }
@@ -210,11 +212,11 @@ namespace BWDPerf.Common.Algorithms.BWD
             for (int l = 0; l < buffer.Length; l++)
             {
                 // Find all locations of this word l
-                if (this.Arr[wordLength - 1][l] != wordLocation) continue;
+                if (this.WordRef[wordLength - 1][l] != wordLocation) continue;
 
                 for (int j = 0; j < buffer.Length; j++)
                 {
-                    for (int i = 0; i < this.Arr.Length; i++)
+                    for (int i = 0; i < this.WordRef.Length; i++)
                     {
                         // Define start and end of exclusion region
                         int start = l - i;
@@ -224,8 +226,21 @@ namespace BWDPerf.Common.Algorithms.BWD
                         end = end < buffer.Length ? end : buffer.Length - 1;
                         // Mark as unavailable
                         for (int s = start; s <= end; s++)
-                            this.Arr[i][s] = -1;
+                            this.WordRef[i][s] = -1;
                     }
+                }
+            }
+        }
+
+        private void CountWords(in byte[] buffer)
+        {
+            this.Count.Clear();
+            for (int j = 0; j < buffer.Length; j++)
+            {
+                for (int i = 0; i < this.WordRef.Length; i++)
+                {
+                    if (this.WordRef[i][j] != j)
+                        this.Count.Add(new Word(this.WordRef[i][j], i + 1));
                 }
             }
         }
