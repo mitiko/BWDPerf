@@ -46,12 +46,15 @@ namespace BWDPerf.Common.Algorithms.BWD
                 for (int i = 0; i < dictionarySize; i++)
                 {
                     var word = this.Dictionary[i];
-                    if (i == dictionarySize-1 && this.Dictionary[i].Length == 0)
+                    if (i == dictionarySize-1)
                     {
                         fileWriter.Write('7');
                         fileWriter.Write('7');
                         fileWriter.Write('7');
                         fileWriter.Write(this.STokenData.Length);
+                        fileWriter.Write('7');
+                        fileWriter.Write('7');
+                        fileWriter.Write('7');
                         // foreach (var character in this.STokenData) fileWriter.Write(character);
                     }
                     else
@@ -146,40 +149,41 @@ namespace BWDPerf.Common.Algorithms.BWD
         {
             // Initialize the matrix
             for (int i = 0; i < this.WordRef.Length; i++)
-                this.WordRef[i] = new int[buffer.Length - i];
-
-            for (int j = 0; j < buffer.Length; j++)
             {
-                if (j % 10_000 == 0) Console.WriteLine($"position: {j}");
-                int startSearch = j - 1; // just a DP hack for faster search, otherwise set to a constant j-1
-                bool absolute = false;
-                for (int i = 0; i < this.WordRef.Length; i++)
+                this.WordRef[i] = new int[buffer.Length - i];
+                for (int j = 0; j < this.WordRef[i].Length; j++)
+                    this.WordRef[i][j] = -1;
+            }
+
+            for (int i = 0; i < this.WordRef.Length; i++)
+            {
+                Console.WriteLine($"i = {i}");
+                for (int j = 0; j < this.WordRef[i].Length; j++)
                 {
-                    int len = i + 1;
-                    if (j + len > buffer.Length) break; // if there's no space for the current word, we just skip
-                    byte[] selection = new byte[len]; // initialize the selection window before the loop
-                    int matchIndex = -1;
+                    if (this.WordRef[i][j] != -1) continue;
+                    this.WordRef[i][j] = j;
 
-                    for (int index = startSearch; index >= 0; index--)
+                    if (i == 0)
                     {
-                        if (absolute && index != startSearch) break;
-                        int end = index + len; // start + len;
-                        if (end > j) continue; // if the words overlap, no match can be found
-                        selection = buffer[index..end]; // select the search region
-
-                        // Check if selection matches the word at j by comparing them.
-                        bool match = true;
-                        for (int s = 0; s < len; s++)
-                            if (selection[s] != buffer[j+s]) { match = false; break; }
-
-                        if (match) { matchIndex = index; break; }
+                        for (int index = j + 1; index < this.WordRef[i].Length; index++)
+                            if (buffer[j] == buffer[index]) this.WordRef[i][index] = j;
+                        continue;
                     }
 
-                    // If no match has been found, set this as the first occurence
-                    this.WordRef[i][j] = matchIndex != -1 ? this.WordRef[i][matchIndex] : j;
-                    if (this.WordRef[i][j] == j) absolute = true;
-                    // Remember that the first backwards match of this length from this location is at this index;
-                    startSearch = matchIndex != -1 ? matchIndex : j;
+                    byte[] selection = new byte[i + 1];
+                    int l = this.WordRef[0][j];
+                    for (int index = j + 1; index < this.WordRef[i].Length;)
+                    {
+                        if (this.WordRef[0][index] != l) { index++; continue; } // check if first character matches or don't waste my time and space
+
+                        selection = buffer[index..(index + i + 1)];
+                        bool match = true;
+                        for (int s = 0; s < selection.Length; s++)
+                            if (buffer[j + s] != selection[s]) { match = false; break; }
+
+                        if (match == true) { this.WordRef[i][index] = j; index += (i + 1); }
+                        else { index++; }
+                    }
                 }
             }
         }
