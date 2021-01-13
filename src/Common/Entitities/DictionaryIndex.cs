@@ -4,7 +4,7 @@ namespace BWDPerf.Common.Entities
     // Used to encode a blocks of integers with variable bits per symbol.
     public struct DictionaryIndex
     {
-        public int Index { get; set; }
+        public int Index { get; }
         public int BitsToUse { get; }
 
         public DictionaryIndex(int index, int bitsToUse)
