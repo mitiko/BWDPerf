@@ -78,29 +78,24 @@ namespace BWDPerf.Common.Algorithms.BWD
         private (bool usesSToken, int dictionarySize, int savedBits) CalculateDictionary(in byte[] buffer)
         {
             var timer = Stopwatch.StartNew();
-            for (int i = 0; i < this.Arr.Length; i++)
-                this.Arr[i] = new int[buffer.Length];
-            // The initial context is the whole buffer
-            // TODO: Eliminate contexts entirely
-            var contexts = new List<byte[]>() { buffer };
-            bool usesSToken = false; int dictionarySize = 0;
-            // Initialize words -> O(m^3 * (b/m - 2/3))
-            GetAllWords(in buffer);
-            Console.WriteLine($"First taking of words took: {timer.Elapsed}");
+            bool usesSToken = false; int dictionarySize = 0; int savedBits = 0;
+            // Initialize words -> O(mb)
+            FindAllMatchingWords(in buffer);
+            Console.WriteLine($"Finding all matching words took: {timer.Elapsed}");
             timer.Restart();
-            int savedBits = 0;
             for (int i = 0; i < this.Dictionary.Length; i++)
             {
+                // Count occurences
+                // TODO: count occurences
                 // Get the best word
                 var word = GetHighestRankedWord(ref usesSToken);
                 Console.WriteLine($"Getting highest ranked word took: {timer.Elapsed}");
                 timer.Restart();
                 // Split by word and save it to dictionary
-                contexts = SplitByWord(contexts, word, usesSToken);
+                SplitByWord(in buffer, word.Length, 0, usesSToken);
                 Console.WriteLine($"Splitting took: {timer.Elapsed}");
                 timer.Restart();
                 this.Dictionary[i] = word;
-                // this.Freq[word] = usesSToken ? this.STokenFrequency : this.Words[word];
                 savedBits += Loss(word, usesSToken);
 
                 // If reached the end of the dictionary and more data is left,
@@ -112,12 +107,6 @@ namespace BWDPerf.Common.Algorithms.BWD
                 // If we've got no data left to encode, save dictionary size
                 if (contexts.Count == 0)
                 { dictionarySize = i + 1; break; }
-
-                // Select words for the next iteration
-                // SelectWords(contexts, word);
-                SelectWords(contexts);
-                Console.WriteLine($"Seconf selection took {timer.Elapsed}");
-                timer.Restart();
             }
 
             return (usesSToken, dictionarySize, savedBits);
@@ -125,6 +114,7 @@ namespace BWDPerf.Common.Algorithms.BWD
 
         private string Print(byte[] word, bool isSToken)
         {
+            // TODO: Change certain bytes for readability (\0x20 and \n, \t etc)
             if (isSToken) return "<s>";
             string str = "";
             foreach (var s in word)
@@ -134,8 +124,12 @@ namespace BWDPerf.Common.Algorithms.BWD
             return str;
         }
 
-        private void GetAllWords(in byte[] buffer)
+        private void FindAllMatchingWords(in byte[] buffer)
         {
+            // Initialize the matrix
+            for (int i = 0; i < this.Arr.Length; i++)
+                this.Arr[i] = new int[buffer.Length];
+
             for (int j = 0; j < buffer.Length; j++)
             {
                 int startSearch = j - 1; // just a hack for faster search, otherwise set to a constant j-1
@@ -164,29 +158,6 @@ namespace BWDPerf.Common.Algorithms.BWD
                     this.Arr[i][j] = matchIndex != -1 ? matchIndex : j;
                     // Remember that the first backwards match of this length from this location is at this index;
                     startSearch = this.Arr[i][j];
-                }
-            }
-        }
-
-        private void SelectWords(List<byte[]> contexts)
-        {
-            this.Words = new(new ByteArrayComparer());
-            int start, end; byte[] word;
-
-            foreach (var buffer in contexts)
-            {
-                for (int i = 0; i < buffer.Length; i++)
-                {
-                    start = i;
-                    for (int j = 1; j <= this.Options.MaxWordSize; j++)
-                    {
-                        end = start + j;
-                        if (end > buffer.Length) break;
-
-                        word = buffer[start..end];
-                        if (this.Words.ContainsKey(word)) this.Words[word] += 1;
-                        else this.Words.Add(word, 1);
-                    }
                 }
             }
         }
@@ -226,38 +197,37 @@ namespace BWDPerf.Common.Algorithms.BWD
             return bestWord;
         }
 
-        private List<byte[]> SplitByWord(List<byte[]> contexts, byte[] word, bool usesSToken)
+        private void SplitByWord(in byte[] buffer, int wordLength, int wordLocation, bool usesSToken)
         {
-            var result = new List<byte[]>();
-            foreach (var buffer in contexts)
+            // TODO: Use s token
+            // if (usesSToken)
+            // {
+            //     this.SToken = this.SToken.Concat(buffer).ToArray();
+            //     this.STokenFrequency++;
+            //     continue;
+            // }
+
+            for (int l = 0; l < buffer.Length; l++)
             {
-                if (usesSToken)
-                {
-                    this.SToken = this.SToken.Concat(buffer).ToArray();
-                    this.STokenFrequency++;
-                    continue;
-                }
+                // Find all locations of this word l
+                if (this.Arr[wordLength - 1][l] != wordLocation) continue;
 
-                int start = 0, count = 0;
-                for (int i = 0; i < buffer.Length; i++)
+                for (int j = 0; j < buffer.Length; j++)
                 {
-                    count = word[count] == buffer[i] ? count + 1 : 0;
-                    // If match
-                    if (count == word.Length)
+                    for (int i = 0; i < this.Arr.Length; i++)
                     {
-                        var buff = buffer[start..(i-count+1)];
-                        if (buff.Length > 0) result.Add(buff);
-                        start = i+1; count = 0; continue;
-                    }
-
-                    // If end of buffer
-                    if (i == buffer.Length - 1)
-                    {
-                        result.Add(buffer[start..]);
+                        // Define start and end of exclusion region
+                        int start = l - i;
+                        int end = l + wordLength - 1 + i;
+                        // Enforce bounds
+                        start = start >= 0 ? start : 0;
+                        end = end < buffer.Length ? end : buffer.Length - 1;
+                        // Mark as unavailable
+                        for (int s = start; s <= end; s++)
+                            this.Arr[i][s] = -1;
                     }
                 }
             }
-            return result;
         }
     }
 }
