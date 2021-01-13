@@ -18,7 +18,7 @@ var timer = Stopwatch.StartNew();
 
 var task = new BufferedFileSource(args[0], 1_000, useProgressBar: false) // 1KB
     .ToCoder<byte[], byte[]>(new CapitalConversion())
-    .ToCoder(new BWD(new Options(indexSize: 4, maxWordSize: 16, autoEnd: false)))
+    .ToCoder(new BWD(new Options(indexSize: 4, maxWordSize: 16)))
     .ToCoder(new Unbuffer<DictionaryIndex>())
     .ToCoder(new DictionaryToBytes())
     .ToCoder(new MeasureEntropy())

@@ -16,18 +16,18 @@ namespace BWDPerf.Common.Algorithms.BWD
         public byte[][] Dictionary { get; }
         public CountDictionary<Word> Count { get; set; }
         public int[][] WordRef { get; set; }
-        public byte[] SToken { get; set; }
-        public int STokenFrequency { get; set; }
+        public byte[] STokenData { get; set; }
+        public Word SToken { get; set; }
 
         public BWD(Options options)
         {
             this.Options = options;
             this.Dictionary = new byte[1 << options.IndexSize][]; // len(dict) = 2^m
             this.WordRef = new int[options.IndexSize][];
-            // TODO: Add initial count to the creation of a count dictionary so we can just pretend the count is 1 less than actual and save calculations in the ranking
+            // This is a measure of repating count. The actual real count is always with one more.
             this.Count = new CountDictionary<Word>();
-            this.SToken = new byte[0];
-            this.STokenFrequency = 0;
+            this.STokenData = new byte[0];
+            this.SToken = new Word(-1, 0);
         }
 
         public async IAsyncEnumerable<DictionaryIndex[]> Encode(IAsyncEnumerable<byte[]> input)
@@ -40,19 +40,19 @@ namespace BWDPerf.Common.Algorithms.BWD
                 expectedTotalSavedBits += expectedSavedBits;
                 Console.WriteLine($"Expected save of {expectedSavedBits} bits on {k} iteration");
                 // Write dcitionary
-
+                // TODO: seperate in new method
                 var fileWriter = new BinaryWriter(new FileInfo($"dictionary-{k}-{this.GetHashCode()}.bwd.dict").OpenWrite());
                 fileWriter.Write(dictionarySize);
                 for (int i = 0; i < dictionarySize; i++)
                 {
                     var word = this.Dictionary[i];
-                    if (usesSToken && i == dictionarySize-1)
+                    if (i == dictionarySize-1 && this.Dictionary[i].Length == 0)
                     {
                         fileWriter.Write('7');
                         fileWriter.Write('7');
                         fileWriter.Write('7');
-                        fileWriter.Write(this.SToken.Length);
-                        foreach (var character in this.SToken) fileWriter.Write(character);
+                        fileWriter.Write(this.STokenData.Length);
+                        // foreach (var character in this.STokenData) fileWriter.Write(character);
                     }
                     else
                     {
@@ -69,7 +69,7 @@ namespace BWDPerf.Common.Algorithms.BWD
                 for (int i = 0; i < dictionarySize; i++)
                 {
                     var word = this.Dictionary[i];
-                    dict[i] = new DictionaryIndex(i, usesSToken ? this.STokenFrequency : this.Words[word]);
+                    dict[i] = new DictionaryIndex(i, this.Options.IndexSize);
                 }
                 yield return dict;
                 k++;
@@ -84,25 +84,37 @@ namespace BWDPerf.Common.Algorithms.BWD
             FindAllMatchingWords(in buffer); // Initialize words -> O(mb)
             Console.WriteLine($"Finding all matching words took: {timer.Elapsed}");
             timer.Restart();
+            CountWords(in buffer); // Count the matching words
+            Console.WriteLine($"Counting the words took: {timer.Elapsed}");
+            timer.Restart();
 
             for (int i = 0; i < this.Dictionary.Length; i++)
             {
                 bool isLastWord = i == this.Dictionary.Length - 1;
-                // Count occurences
-                CountWords(in buffer);
-                Console.WriteLine($"Counting the words took: {timer.Elapsed}");
-                timer.Restart();
-                // Get the best word
-                var word = GetHighestRankedWord(isLastWord);
-                Console.WriteLine($"Getting highest ranked word took: {timer.Elapsed}");
-                timer.Restart();
-                // Split by word and save it to dictionary
-                SplitByWord(in buffer, word, isLastWord);
-                Console.WriteLine($"Splitting took: {timer.Elapsed}");
-                timer.Restart();
+                Word word;
+                if (!isLastWord)
+                {
+                    // Get the best word
+                    word = GetHighestRankedWord();
+                    Console.WriteLine($"Getting highest ranked word took: {timer.Elapsed}");
+                    timer.Restart();
+                    // Split by word and save it to dictionary
+                    SplitByWord(in buffer, word);
+                    Console.WriteLine($"Splitting took: {timer.Elapsed}");
+                    timer.Restart();
+                    // Count new occurences
+                    CountWords(in buffer);
+                    Console.WriteLine($"Counting the words took: {timer.Elapsed}");
+                    timer.Restart();
+                }
+                else
+                {
+                    CollectSTokenData(in buffer);
+                    word = this.SToken;
+                }
 
                 // Save the chosen word
-                this.Dictionary[i] = buffer[word.Location..(word.Location + word.Length)];
+                this.Dictionary[i] = isLastWord ? this.STokenData : buffer[word.Location..(word.Location + word.Length)];
                 // Calculate estimated savings
                 expectedSavedBits += Loss(word, isLastWord);
                 Console.WriteLine($"{i} --- {Loss(word, isLastWord)} --- \"{Print(this.Dictionary[i], isLastWord)}\"");
@@ -135,7 +147,7 @@ namespace BWDPerf.Common.Algorithms.BWD
 
             for (int j = 0; j < buffer.Length; j++)
             {
-                int startSearch = j - 1; // just a hack for faster search, otherwise set to a constant j-1
+                int startSearch = j - 1; // just a DP hack for faster search, otherwise set to a constant j-1
                 for (int i = 0; i < this.WordRef.Length; i++)
                 {
                     int len = i + 1;
@@ -167,49 +179,35 @@ namespace BWDPerf.Common.Algorithms.BWD
 
         private int Rank(Word word)
         {
-            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (this.Count[word] - 1);
+            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (this.Count[word]);
         }
 
         private int Loss(Word word, bool isLastWord = false)
         {
-            if (isLastWord && this.STokenFrequency == 0) return - this.Options.IndexSize;
-            if (isLastWord) return - (this.Options.IndexSize + this.Options.BPC) * this.STokenFrequency;
-            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (this.Count[word] - 1) - this.Options.IndexSize;
+            if (isLastWord && this.Count[word] == 0) return - this.Options.IndexSize;
+            if (isLastWord) return - (this.Options.IndexSize + this.Options.BPC) * (this.Count[word] + 1);
+            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (this.Count[word]) - this.Options.IndexSize;
         }
 
-        private Word GetHighestRankedWord(bool isLastWord)
+        private Word GetHighestRankedWord()
         {
-            var bestWord = this.Words.First().Key;
+            var bestWord = this.Count.Keys.First();
             int rank, newRank;
             rank = Rank(bestWord);
-            foreach (var word in this.Words.Keys)
+            foreach (var word in this.Count.Keys)
             {
                 newRank = Rank(word);
-                if (newRank > rank)
-                { bestWord = word; rank = newRank; }
-                if (newRank == rank && this.Words[word] >= this.Words[bestWord])
-                { bestWord = word; }
+                if (newRank > rank) { bestWord = word; rank = newRank; }
+                // TODO: Make considerations on the contexts from which the words were taken
+                // This comparison of counts is relative so it doesn't matter that the actual count is with 1 less
+                if (newRank == rank && this.Count[word] >= this.Count[bestWord]) { bestWord = word; }
             }
-
-            if (Loss(bestWord) <= Loss(this.SToken, true) && this.Options.AutoEnd)
-                usesSToken = true;
-
-            if (usesSToken)
-                return this.SToken;
 
             return bestWord;
         }
 
-        private void SplitByWord(in byte[] buffer, Word word, bool isLastWord)
+        private void SplitByWord(in byte[] buffer, Word word)
         {
-            // TODO: Use s token
-            // if (isLastWord)
-            // {
-            //     this.SToken = this.SToken.Concat(buffer).ToArray();
-            //     this.STokenFrequency++;
-            //     continue;
-            // }
-
             for (int l = 0; l < buffer.Length; l++)
             {
                 // Find all locations of this word l
@@ -236,6 +234,7 @@ namespace BWDPerf.Common.Algorithms.BWD
         private void CountWords(in byte[] buffer)
         {
             this.Count.Clear();
+
             for (int j = 0; j < buffer.Length; j++)
             {
                 for (int i = 0; i < this.WordRef.Length; i++)
@@ -244,6 +243,27 @@ namespace BWDPerf.Common.Algorithms.BWD
                         this.Count.Add(new Word(this.WordRef[i][j], i + 1));
                 }
             }
+        }
+
+        private void CollectSTokenData(in byte[] buffer)
+        {
+            var list = new List<byte>();
+            bool isNewToken = true;
+            for (int j = 0; j < buffer.Length; j++)
+            {
+                if (this.WordRef[0][j] != -1)
+                {
+                    list.Add(buffer[j]);
+                    if (isNewToken == true)
+                    {
+                        this.Count.Add(this.SToken);
+                        isNewToken = false;
+                    }
+                }
+                else { isNewToken = true; }
+            }
+            this.STokenData = list.ToArray();
+            return;
         }
     }
 }

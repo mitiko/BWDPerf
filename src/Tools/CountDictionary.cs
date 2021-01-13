@@ -7,7 +7,7 @@ namespace BWDPerf.Tools
         public void Add(TKey key)
         {
             if (!base.ContainsKey(key))
-                base.Add(key, 2);
+                base.Add(key, 1);
             else
                 base[key]++;
         }
