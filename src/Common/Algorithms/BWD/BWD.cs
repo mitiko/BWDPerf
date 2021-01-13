@@ -128,7 +128,7 @@ namespace BWDPerf.Common.Algorithms.BWD
         {
             // Initialize the matrix
             for (int i = 0; i < this.Arr.Length; i++)
-                this.Arr[i] = new int[buffer.Length];
+                this.Arr[i] = new int[buffer.Length - i];
 
             for (int j = 0; j < buffer.Length; j++)
             {
