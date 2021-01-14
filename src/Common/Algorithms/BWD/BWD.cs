@@ -30,9 +30,8 @@ namespace BWDPerf.Common.Algorithms.BWD
             await foreach (var buffer in input)
             {
                 var dictionarySize = CalculateDictionary(in buffer);
-                // TODO: create dictionary
-                byte[] dictionary = EncodeDictionary();
-                DictionaryIndex[] stream = EncodeStream(in buffer);
+                byte[] dictionary = EncodeDictionary(dictionarySize);
+                DictionaryIndex[] stream = EncodeStream(in buffer, dictionarySize);
 
                 yield return (dictionary, stream);
             }
@@ -236,14 +235,58 @@ namespace BWDPerf.Common.Algorithms.BWD
             return str;
         }
 
-        private byte[] EncodeDictionary()
+        private byte[] EncodeDictionary(int dictionarySize)
         {
-            throw new NotImplementedException();
+            var buffer = new List<byte>();
+            buffer.AddRange(BitConverter.GetBytes(dictionarySize));
+            for (int i = 0; i < dictionarySize; i++)
+            {
+                if (this.STokenData.Length > 0)
+                    buffer.Add(byte.MaxValue);
+                else
+                    buffer.Add((byte) this.Dictionary[i].Length);
+
+                foreach (var symbol in this.Dictionary[i])
+                    buffer.Add(symbol);
+            }
+            return buffer.ToArray();
         }
 
-        private DictionaryIndex[] EncodeStream(in byte[] buffer)
+        private DictionaryIndex[] EncodeStream(in byte[] buffer, int dictionarySize)
         {
-            throw new NotImplementedException();
+            // TODO: Add end of stoken in the stoken data
+            var stream = new List<DictionaryIndex>();
+            int bitsToUse = this.Options.IndexSize;
+            bool stokenCheck = false;
+            var stoken = new DictionaryIndex(dictionarySize - 1, bitsToUse); // TODO: find which index this should be
+
+            for (int j = 0; j < buffer.Length;)
+            {
+                for (int i = 0; i < dictionarySize; i++)
+                {
+                    if (i == dictionarySize - 1 && this.STokenData.Length > 0)
+                    { stokenCheck = true; j++; break; }
+                    var word = this.Dictionary[i];
+
+                    bool match = true;
+                    var selection = buffer[j..(j + word.Length)];
+                    for (int s = 0; s < word.Length; s++)
+                        if (selection[s] != word[s]) { match = false; break; }
+
+                    if (match == true)
+                    {
+                        if (stokenCheck == true)
+                            stream.Add(stoken);
+                        stokenCheck = false;
+                        stream.Add(new DictionaryIndex(i, bitsToUse));
+                        j += word.Length;
+                        break;
+                    }
+                }
+            }
+            if (stokenCheck == true) stream.Add(stoken);
+
+            return stream.ToArray();
         }
     }
 }
