@@ -40,7 +40,7 @@ namespace BWDPerf.Common.Algorithms.BWD
         private int CalculateDictionary(in byte[] buffer)
         {
             int dictionarySize = 0;
-            int[][] wordRef = new int[this.Options.IndexSize][];
+            int[][] wordRef = new int[this.Options.MaxWordSize][];
             var wordCount = new OccurenceDictionary<Word>();
 
             var timer = Stopwatch.StartNew();
