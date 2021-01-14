@@ -1,14 +1,11 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 using BWDPerf.Interfaces;
 
 namespace BWDPerf.Common.Serializers
 {
-    public class SerializeToFile : ISerializer<byte>
+    public class SerializeToFile : ISerializer<byte>, ISerializer<byte[]>, IDualSerializer<byte[], byte[]>
     {
         public FileInfo File { get; }
         public int BufferSize { get; }
@@ -37,6 +34,33 @@ namespace BWDPerf.Common.Serializers
                 count = count == buffer.Length ? 0 : count + 1;
             }
             writer.Write(buffer, 0, count);
+            writer.Flush();
+            writer.Close();
+        }
+
+        public async Task Complete(IAsyncEnumerable<byte[]> input)
+        {
+            using var writer = new BinaryWriter(this.File.OpenWrite());
+
+            await foreach (var symbol in input)
+            {
+                writer.Write(symbol, 0, symbol.Length);
+            }
+            writer.Flush();
+            writer.Close();
+        }
+
+        public async Task Complete(IAsyncEnumerable<(byte[] first, byte[] second)> input)
+        {
+            using var writer = new BinaryWriter(this.File.OpenWrite());
+
+            await foreach (var (first, second) in input)
+            {
+                writer.Write(first, 0, first.Length);
+                writer.Write(second, 0, second.Length);
+            }
+            writer.Flush();
+            writer.Close();
         }
     }
 }

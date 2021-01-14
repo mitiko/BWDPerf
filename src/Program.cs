@@ -18,8 +18,8 @@ var timer = Stopwatch.StartNew();
 
 var task = new BufferedFileSource(args[0], 10_000_000, useProgressBar: false) // 10MB
     .ToCoder<byte[], byte[]>(new CapitalConversion())
-    .ToCoder(new BWD(new Options(indexSize: 6, maxWordSize: 16)))
-    .ToCoder(new Unbuffer<DictionaryIndex>())
+    .ToDualOutputCoder(new BWD(new Options(indexSize: 6, maxWordSize: 16)))
+    // .ToCoder(new Unbuffer<DictionaryIndex>())
     .ToCoder(new DictionaryToBytes())
     .ToCoder(new MeasureEntropy())
     .Serialize(new SerializeToFile("enwik4.bwd"));
@@ -28,13 +28,13 @@ var task = new BufferedFileSource(args[0], 10_000_000, useProgressBar: false) //
 await task;
 Console.WriteLine($"Elapsed: {timer.Elapsed}");
 
-public class DictionaryToBytes : ICoder<DictionaryIndex, byte>
+public class DictionaryToBytes : ICoder<(byte[], DictionaryIndex[]), byte>
 {
-    public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<DictionaryIndex> input)
+    public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<(byte[], DictionaryIndex[])> input)
     {
         await foreach (var item in input)
         {
-            yield return (byte) item.Index;
+            yield return (byte) item.Item1[0];
         }
     }
 }
