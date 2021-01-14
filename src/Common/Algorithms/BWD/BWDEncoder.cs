@@ -10,14 +10,14 @@ using BWDPerf.Tools;
 namespace BWDPerf.Common.Algorithms.BWD
 {
     // Encode the buffer and pass it on as individual symbols or as blocks of indices
-    public class BWD : IDualCoder<byte[], byte[], DictionaryIndex[]>
+    public class BWDEncoder : IDualCoder<byte[], byte[], DictionaryIndex[]>
     {
         public Options Options { get; set; }
         public byte[][] Dictionary { get; }
         public byte[] STokenData { get; set; }
         public Word SToken { get; set; }
 
-        public BWD(Options options)
+        public BWDEncoder(Options options)
         {
             this.Options = options;
             this.Dictionary = new byte[1 << options.IndexSize][]; // len(dict) = 2^m
@@ -241,13 +241,17 @@ namespace BWDPerf.Common.Algorithms.BWD
             buffer.AddRange(BitConverter.GetBytes(dictionarySize));
             for (int i = 0; i < dictionarySize; i++)
             {
-                if (this.STokenData.Length > 0)
+                if (i == dictionarySize - 1 && this.STokenData.Length > 0)
                     buffer.Add(byte.MaxValue);
                 else
                     buffer.Add((byte) this.Dictionary[i].Length);
 
                 foreach (var symbol in this.Dictionary[i])
                     buffer.Add(symbol);
+            }
+            for (int i = 0; i < 64; i++)
+            {
+                buffer.Add((byte) '#');
             }
             return buffer.ToArray();
         }
@@ -269,6 +273,8 @@ namespace BWDPerf.Common.Algorithms.BWD
                     var word = this.Dictionary[i];
 
                     bool match = true;
+                    // If no space is left, no match can be found
+                    if (j + word.Length >= buffer.Length) continue;
                     var selection = buffer[j..(j + word.Length)];
                     for (int s = 0; s < word.Length; s++)
                         if (selection[s] != word[s]) { match = false; break; }

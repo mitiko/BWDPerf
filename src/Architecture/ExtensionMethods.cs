@@ -20,8 +20,5 @@ namespace BWDPerf.Architecture
 
         public static async Task Serialize<Symbol>(this IAsyncEnumerable<Symbol> pipeline, ISerializer<Symbol> serializer) =>
             await serializer.Complete(pipeline);
-
-        public static async Task SerializeDual<SymbolA, SymbolB>(this IAsyncEnumerable<(SymbolA, SymbolB)> input, IDualSerializer<SymbolA, SymbolB> serializer) =>
-            await serializer.Complete(input);
     }
 }

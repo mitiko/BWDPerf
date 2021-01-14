@@ -5,7 +5,7 @@ using BWDPerf.Interfaces;
 
 namespace BWDPerf.Common.Serializers
 {
-    public class SerializeToFile : ISerializer<byte>, ISerializer<byte[]>, IDualSerializer<byte[], byte[]>
+    public class SerializeToFile : ISerializer<byte>, ISerializer<byte[]>
     {
         public FileInfo File { get; }
         public int BufferSize { get; }
@@ -45,19 +45,6 @@ namespace BWDPerf.Common.Serializers
             await foreach (var symbol in input)
             {
                 writer.Write(symbol, 0, symbol.Length);
-            }
-            writer.Flush();
-            writer.Close();
-        }
-
-        public async Task Complete(IAsyncEnumerable<(byte[] first, byte[] second)> input)
-        {
-            using var writer = new BinaryWriter(this.File.OpenWrite());
-
-            await foreach (var (first, second) in input)
-            {
-                writer.Write(first, 0, first.Length);
-                writer.Write(second, 0, second.Length);
             }
             writer.Flush();
             writer.Close();

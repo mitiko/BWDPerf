@@ -18,9 +18,9 @@ var timer = Stopwatch.StartNew();
 
 var task = new BufferedFileSource(args[0], 10_000_000, useProgressBar: false) // 10MB
     .ToCoder<byte[], byte[]>(new CapitalConversion())
-    .ToDualOutputCoder(new BWD(new Options(indexSize: 6, maxWordSize: 12)))
+    .ToDualOutputCoder(new BWDEncoder(new Options(indexSize: 5, maxWordSize: 16)))
     .ToCoder(new DictionaryToBytes())
-    .ToCoder(new MeasureEntropy())
+    // .ToCoder(new MeasureEntropy())
     .Serialize(new SerializeToFile("enwik4.bwd"));
 
 
@@ -31,9 +31,37 @@ public class DictionaryToBytes : ICoder<(byte[], DictionaryIndex[]), byte>
 {
     public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<(byte[], DictionaryIndex[])> input)
     {
-        await foreach (var item in input)
+        await foreach (var (dictionary, stream) in input)
         {
-            yield return (byte) item.Item1[0];
+            // Write out the dictionary
+            foreach (var @byte in dictionary)
+                yield return @byte;
+
+            var bits = new Queue<bool>();
+            foreach (var index in stream)
+            {
+                // Write bits of the current index to the queue
+                for (int i = index.BitsToUse - 1; i >= 0; i--)
+                    bits.Enqueue((index.Index & (1 << i)) != 0);
+
+                // Flush out buffered bytes if any
+                while (bits.Count >= 8) yield return ReadFromBitBuffer();
+            }
+
+            // If we still have bits, write the rest and pad them with zeroes
+            if (bits.Count > 0) yield return ReadFromBitBuffer();
+
+            byte ReadFromBitBuffer()
+            {
+                byte n = 0;
+                for (int i = 0; i < 8; i++)
+                {
+                    n <<= 1;
+                    if (bits.TryDequeue(out bool checkBit))
+                        if (checkBit) n += 1;
+                }
+                return n;
+            }
         }
     }
 }
