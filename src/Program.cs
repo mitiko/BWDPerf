@@ -8,6 +8,7 @@ using BWDPerf.Common.Entities;
 using BWDPerf.Common.Algorithms.BWD;
 using BWDPerf.Interfaces;
 using System.Collections.Generic;
+using System.Linq;
 
 Console.WriteLine("Started");
 
@@ -18,50 +19,35 @@ var timer = Stopwatch.StartNew();
 
 var task = new BufferedFileSource(args[0], 10_000_000, useProgressBar: false) // 10MB
     .ToCoder<byte[], byte[]>(new CapitalConversion())
-    .ToDualOutputCoder(new BWDEncoder(new Options(indexSize: 5, maxWordSize: 16)))
+    .ToDualOutputCoder(new BWDEncoder(new Options(indexSize: 9, maxWordSize: 24)))
+    .ToCoder(new CalcEntropy())
     .ToCoder(new DictionaryToBytes())
-    // .ToCoder(new MeasureEntropy())
     .Serialize(new SerializeToFile("enwik4.bwd"));
 
 
 await task;
 Console.WriteLine($"Elapsed: {timer.Elapsed}");
 
-public class DictionaryToBytes : ICoder<(byte[], DictionaryIndex[]), byte>
+public class CalcEntropy : ICoder<(byte[], DictionaryIndex[]), (byte[], DictionaryIndex[])>
 {
-    public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<(byte[], DictionaryIndex[])> input)
+    public async IAsyncEnumerable<(byte[], DictionaryIndex[])> Encode(IAsyncEnumerable<(byte[], DictionaryIndex[])> input)
     {
         await foreach (var (dictionary, stream) in input)
         {
-            // Write out the dictionary
-            foreach (var @byte in dictionary)
-                yield return @byte;
+            var count = stream.Length;
+            var od = new BWDPerf.Tools.OccurenceDictionary<byte>();
+            foreach (var symbol in stream)
+                od.Add((byte) symbol.Index);
 
-            var bits = new Queue<bool>();
-            foreach (var index in stream)
-            {
-                // Write bits of the current index to the queue
-                for (int i = index.BitsToUse - 1; i >= 0; i--)
-                    bits.Enqueue((index.Index & (1 << i)) != 0);
+            double total = od.Sum();
+            var entropy = od.Values
+                .Select(x => x / total)
+                .Select(x => - Math.Log2(x) * x)
+                .Sum();
 
-                // Flush out buffered bytes if any
-                while (bits.Count >= 8) yield return ReadFromBitBuffer();
-            }
+            Console.WriteLine($"Calculated entropy or something: e={entropy}; c={count}; d={dictionary.Length} space={entropy * count / 8 + dictionary.Length}");
 
-            // If we still have bits, write the rest and pad them with zeroes
-            if (bits.Count > 0) yield return ReadFromBitBuffer();
-
-            byte ReadFromBitBuffer()
-            {
-                byte n = 0;
-                for (int i = 0; i < 8; i++)
-                {
-                    n <<= 1;
-                    if (bits.TryDequeue(out bool checkBit))
-                        if (checkBit) n += 1;
-                }
-                return n;
-            }
+            yield return (dictionary, stream);
         }
     }
 }

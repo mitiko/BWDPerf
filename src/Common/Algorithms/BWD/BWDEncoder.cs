@@ -90,7 +90,7 @@ namespace BWDPerf.Common.Algorithms.BWD
             return dictionarySize;
         }
 
-        private int Rank(Word word, ref OccurenceDictionary<Word> wordCount)
+        private double Rank(Word word, ref OccurenceDictionary<Word> wordCount)
         {
             return (word.Length * this.Options.BPC - this.Options.IndexSize) * (wordCount[word] - 1);
         }
@@ -109,7 +109,7 @@ namespace BWDPerf.Common.Algorithms.BWD
             {
                 wordRef[i] = new int[buffer.Length - i];
                 for (int j = 0; j < wordRef[i].Length; j++)
-                    wordRef[i][j] = -1;
+                    wordRef[i][j] = -2;
             }
 
             for (int i = 0; i < wordRef.Length; i++)
@@ -117,7 +117,7 @@ namespace BWDPerf.Common.Algorithms.BWD
                 Console.WriteLine($"i = {i}");
                 for (int j = 0; j < wordRef[i].Length; j++)
                 {
-                    if (wordRef[i][j] != -1) continue;
+                    if (wordRef[i][j] != -2) continue;
                     wordRef[i][j] = j;
 
                     if (i == 0)
@@ -161,7 +161,7 @@ namespace BWDPerf.Common.Algorithms.BWD
         private Word GetHighestRankedWord(ref OccurenceDictionary<Word> wordCount)
         {
             var bestWord = wordCount.Keys.First();
-            int rank, newRank;
+            double rank, newRank;
             rank = Rank(bestWord, ref wordCount);
             foreach (var word in wordCount.Keys)
             {
@@ -213,6 +213,7 @@ namespace BWDPerf.Common.Algorithms.BWD
                     list.Add(buffer[j]);
                     if (isNewToken == true)
                     {
+                        list.Add(0xff);
                         wordCount.Add(this.SToken);
                         isNewToken = false;
                     }
@@ -274,7 +275,7 @@ namespace BWDPerf.Common.Algorithms.BWD
 
                     bool match = true;
                     // If no space is left, no match can be found
-                    if (j + word.Length >= buffer.Length) continue;
+                    if (j + word.Length > buffer.Length) continue;
                     var selection = buffer[j..(j + word.Length)];
                     for (int s = 0; s < word.Length; s++)
                         if (selection[s] != word[s]) { match = false; break; }
@@ -288,6 +289,9 @@ namespace BWDPerf.Common.Algorithms.BWD
                         j += word.Length;
                         break;
                     }
+
+                    if (i == dictionarySize - 1 && !match && dictionarySize < this.Dictionary.Length)
+                    { stokenCheck = true; j++; }
                 }
             }
             if (stokenCheck == true) stream.Add(stoken);
