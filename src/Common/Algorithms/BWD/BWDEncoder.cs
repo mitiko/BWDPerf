@@ -59,7 +59,7 @@ namespace BWDPerf.Common.Algorithms.BWD
                 {
                     CollectSTokenData(in buffer, ref wordRef, ref wordCount);
                     this.Dictionary[i] = this.STokenData;
-                    Console.WriteLine($"{i} --- {Loss(this.SToken, ref wordCount, isLastWord)} --- \"{Print(this.Dictionary[i], isLastWord)}\"");
+                    Console.WriteLine($"{i} --- {- (this.Options.IndexSize + this.Options.BPC) * wordCount[this.SToken]} --- \"<s>\"");
                     dictionarySize = i + 1;
                     break;
                 }
@@ -71,7 +71,7 @@ namespace BWDPerf.Common.Algorithms.BWD
 
                 // Save the chosen word
                 this.Dictionary[i] = isLastWord ? this.STokenData : buffer[word.Location..(word.Location + word.Length)];
-                Console.WriteLine($"{i} --- {Loss(word, ref wordCount, isLastWord)} --- \"{Print(this.Dictionary[i], isLastWord)}\"");
+                Console.WriteLine($"{i} --- {Rank(word, ref wordCount)} --- \"{Print(this.Dictionary[i], isLastWord)}\"");
 
                 // Split by word and save it to dictionary
                 SplitByWord(in buffer, word, ref wordRef, ref wordCount);
@@ -92,14 +92,8 @@ namespace BWDPerf.Common.Algorithms.BWD
 
         private double Rank(Word word, ref OccurenceDictionary<Word> wordCount)
         {
+            // return (word.Length * this.Options.BPC - (2*8 + 4)) * (wordCount[word] - 1);
             return (word.Length * this.Options.BPC - this.Options.IndexSize) * (wordCount[word] - 1);
-        }
-
-        private int Loss(Word word, ref OccurenceDictionary<Word> wordCount, bool isLastWord = false)
-        {
-            if (isLastWord && wordCount[word] == 0) return - this.Options.IndexSize;
-            if (isLastWord) return - (this.Options.IndexSize + this.Options.BPC) * wordCount[word];
-            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (wordCount[word] - 1) - this.Options.IndexSize;
         }
 
         private void FindAllMatchingWords(in byte[] buffer, ref int[][] wordRef)
@@ -166,9 +160,8 @@ namespace BWDPerf.Common.Algorithms.BWD
             foreach (var word in wordCount.Keys)
             {
                 newRank = Rank(word, ref wordCount);
-                if (newRank > rank) { bestWord = word; rank = newRank; }
+                if (newRank >= rank) { bestWord = word; rank = newRank; }
                 // TODO: Make considerations on the contexts from which the words were taken
-                if (newRank == rank && wordCount[word] >= wordCount[bestWord]) { bestWord = word; }
             }
 
             return bestWord;
