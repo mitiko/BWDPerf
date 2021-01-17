@@ -71,7 +71,7 @@ namespace BWDPerf.Common.Algorithms.BWD
 
                 // Save the chosen word
                 this.Dictionary[i] = isLastWord ? this.STokenData : buffer[word.Location..(word.Location + word.Length)];
-                Console.WriteLine($"{i} --- {Rank(word, ref wordCount)} --- \"{Print(this.Dictionary[i], isLastWord)}\"");
+                Console.WriteLine($"{i} --- {Rank(word, ref wordCount).ToString("0.00")} --- \"{Print(this.Dictionary[i], isLastWord)}\"");
 
                 // Split by word and save it to dictionary
                 SplitByWord(in buffer, word, ref wordRef, ref wordCount);
@@ -93,7 +93,11 @@ namespace BWDPerf.Common.Algorithms.BWD
         private double Rank(Word word, ref OccurenceDictionary<Word> wordCount)
         {
             // return (word.Length * this.Options.BPC - (2*8 + 4)) * (wordCount[word] - 1);
-            return (word.Length * this.Options.BPC - this.Options.IndexSize) * (wordCount[word] - 1);
+            // var t = 9375.0; // Estimate of total symbols in stream after transform
+            var c = wordCount[word]; // Count of this word
+            var l = word.Length;
+            return (l * this.Options.BPC - 3 * this.Options.IndexSize) * (c - 1);
+            // return c * (Math.Log2(c) + l * this.Options.BPC - Math.Log2(t)) + l * this.Options.BPC;
         }
 
         private void FindAllMatchingWords(in byte[] buffer, ref int[][] wordRef)

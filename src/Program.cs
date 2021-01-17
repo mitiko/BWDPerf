@@ -13,10 +13,9 @@ using System.Linq;
 Console.WriteLine("Started");
 
 if (args.Length != 1)
-    args = new string[] { "../data/enwik4" };
+    args = new string[] { "../data/book111" };
 
 var file = new System.IO.FileInfo(args[0]);
-
 var timer = Stopwatch.StartNew();
 
 var task = new BufferedFileSource(args[0], 10_000_000, useProgressBar: false) // 10MB
