@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using BWDPerf.Common.Entities;
 using BWDPerf.Interfaces;
@@ -14,6 +15,8 @@ namespace BWDPerf.Common.Tools
                 yield return dictionary;
 
                 var bytes = new List<byte>();
+                bytes.AddRange(BitConverter.GetBytes(stream.Length));
+                Console.WriteLine($"Stream size is {stream.Length}");
                 var bits = new Queue<bool>();
                 foreach (var index in stream)
                 {
@@ -22,15 +25,20 @@ namespace BWDPerf.Common.Tools
                         bits.Enqueue((index.Index & (1 << i)) != 0);
 
                     // Flush out buffered bytes if any
-                    while (bits.Count >= 8) bytes.Add(ReadFromBitBuffer());
+                    while (bits.Count >= 8) bytes.Add(ReadFromBitQueue());
+                }
+
+                for (int i = 0; i < 4; i++)
+                {
+                    Console.WriteLine($"Index {i} of stream is {stream[i].Index}");
                 }
 
                 // If we still have bits, write the rest and pad them with zeroes
-                if (bits.Count > 0) bytes.Add(ReadFromBitBuffer());
+                if (bits.Count > 0) bytes.Add(ReadFromBitQueue());
 
                 yield return bytes.ToArray();
 
-                byte ReadFromBitBuffer()
+                byte ReadFromBitQueue()
                 {
                     byte n = 0;
                     for (int i = 0; i < 8; i++)

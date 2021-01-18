@@ -18,16 +18,22 @@ if (args.Length != 1)
 var file = new System.IO.FileInfo(args[0]);
 var timer = Stopwatch.StartNew();
 
-var task = new BufferedFileSource(args[0], 10_000_000, useProgressBar: false) // 10MB
-    .ToCoder<byte[], byte[]>(new CapitalConversion())
-    .ToDualOutputCoder(new BWDEncoder(new Options(indexSize: 6, maxWordSize: 12, bpc: 8)))
+var encodingTask = new BufferedFileSource(args[0], 10_000_000) // 10MB
+    // .ToCoder<byte[], byte[]>(new CapitalConversion())
+    .ToCoder(new BWDEncoder(new Options(indexSize: 8, maxWordSize: 12, bpc: 8)))
     .ToCoder(new CalcEntropy())
     .ToCoder(new DictionaryToBytes())
     .Serialize(new SerializeToFile($"{file.Name}.bwd"));
 
 
-await task;
+await encodingTask;
 Console.WriteLine($"Elapsed: {timer.Elapsed}");
+
+var decodingTask = new FileSource($"{file.Name}.bwd")
+    .ToDecoder<byte, byte[]>(new BWDDecoder())
+    .Serialize(new SerializeToFile($"{file.Name}.orig"));
+
+await decodingTask;
 
 public class CalcEntropy : ICoder<(byte[], DictionaryIndex[]), (byte[], DictionaryIndex[])>
 {

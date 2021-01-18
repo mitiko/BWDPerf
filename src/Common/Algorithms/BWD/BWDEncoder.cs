@@ -10,7 +10,7 @@ using BWDPerf.Tools;
 namespace BWDPerf.Common.Algorithms.BWD
 {
     // Encode the buffer and pass it on as individual symbols or as blocks of indices
-    public class BWDEncoder : IDualCoder<byte[], byte[], DictionaryIndex[]>
+    public class BWDEncoder : ICoder<byte[], (byte[], DictionaryIndex[])>
     {
         public Options Options { get; set; }
         public byte[][] Dictionary { get; }
@@ -207,13 +207,16 @@ namespace BWDPerf.Common.Algorithms.BWD
             {
                 if (wordRef[0][j] != -1)
                 {
-                    list.Add(buffer[j]);
-                    if (isNewToken == true)
+                    if (isNewToken == true && j != 0)
                     {
                         list.Add(0xff);
                         wordCount.Add(this.SToken);
                         isNewToken = false;
                     }
+
+                    list.Add(buffer[j]);
+                    if (buffer[j] == 0xff) list.Add(0xff);
+
                 }
                 else { isNewToken = true; }
             }
@@ -240,17 +243,17 @@ namespace BWDPerf.Common.Algorithms.BWD
             for (int i = 0; i < dictionarySize; i++)
             {
                 if (i == dictionarySize - 1 && this.STokenData.Length > 0)
-                    buffer.Add(byte.MaxValue);
+                    buffer.AddRange(BitConverter.GetBytes(this.STokenData.Length));
                 else
                     buffer.Add((byte) this.Dictionary[i].Length);
 
                 foreach (var symbol in this.Dictionary[i])
                     buffer.Add(symbol);
             }
-            for (int i = 0; i < 64; i++)
-            {
-                buffer.Add((byte) '#');
-            }
+            // for (int i = 0; i < 64; i++)
+            // {
+            //     buffer.Add((byte) '#');
+            // }
             return buffer.ToArray();
         }
 
