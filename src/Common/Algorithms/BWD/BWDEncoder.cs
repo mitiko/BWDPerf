@@ -188,7 +188,7 @@ namespace BWDPerf.Common.Algorithms.BWD
                 {
                     // Define start and end of exclusion region
                     int start = locations[l] - i;
-                    int end = locations[l] + word.Length - 1 + i;
+                    int end = locations[l] + word.Length - 1;
                     // Enforce bounds
                     start = start >= 0 ? start : 0;
                     end = end < wordRef[i].Length ? end : wordRef[i].Length - 1;
@@ -202,12 +202,12 @@ namespace BWDPerf.Common.Algorithms.BWD
         private void CollectSTokenData(in byte[] buffer, ref int[][] wordRef, ref OccurenceDictionary<Word> wordCount)
         {
             var list = new List<byte>();
-            bool isNewToken = true;
+            bool isNewToken = false;
             for (int j = 0; j < buffer.Length; j++)
             {
                 if (wordRef[0][j] != -1)
                 {
-                    if (isNewToken == true && j != 0)
+                    if (isNewToken == true)
                     {
                         list.Add(0xff);
                         wordCount.Add(this.SToken);
@@ -216,7 +216,6 @@ namespace BWDPerf.Common.Algorithms.BWD
 
                     list.Add(buffer[j]);
                     if (buffer[j] == 0xff) list.Add(0xff);
-
                 }
                 else { isNewToken = true; }
             }
