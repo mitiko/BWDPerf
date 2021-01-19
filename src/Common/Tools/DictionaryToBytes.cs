@@ -13,6 +13,7 @@ namespace BWDPerf.Common.Tools
             {
                 // Write out the dictionary
                 yield return dictionary;
+                // TODO: Remove BitsToUse property, by checking the first 4 bytes of the dictionary for the dictionry size
 
                 var bytes = new List<byte>();
                 bytes.AddRange(BitConverter.GetBytes(stream.Length));
@@ -26,11 +27,6 @@ namespace BWDPerf.Common.Tools
 
                     // Flush out buffered bytes if any
                     while (bits.Count >= 8) bytes.Add(ReadFromBitQueue());
-                }
-
-                for (int i = 0; i < 4; i++)
-                {
-                    Console.WriteLine($"Index {i} of stream is {stream[i].Index}");
                 }
 
                 // If we still have bits, write the rest and pad them with zeroes

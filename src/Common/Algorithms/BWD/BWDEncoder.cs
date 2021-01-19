@@ -250,10 +250,10 @@ namespace BWDPerf.Common.Algorithms.BWD
                 foreach (var symbol in this.Dictionary[i])
                     buffer.Add(symbol);
             }
-            // for (int i = 0; i < 64; i++)
-            // {
-            //     buffer.Add((byte) '#');
-            // }
+            for (int i = 0; i < 64; i++)
+            {
+                buffer.Add((byte) '#');
+            }
             return buffer.ToArray();
         }
 
@@ -287,14 +287,35 @@ namespace BWDPerf.Common.Algorithms.BWD
                         stokenCheck = false;
                         stream.Add(new DictionaryIndex(i, bitsToUse));
                         j += word.Length;
+                        // hmm, does the stoken introduce problems with the counting here
                         break;
                     }
 
-                    if (i == dictionarySize - 1 && !match && dictionarySize < this.Dictionary.Length)
-                    { stokenCheck = true; j++; }
+                    if (i == dictionarySize - 1 && !match)
+                        j++;
                 }
             }
             if (stokenCheck == true) stream.Add(stoken);
+
+            Console.WriteLine("STREAM -----------");
+            for (int i = 0; i < 100; i++)
+            {
+                string word = "";
+                if (stream[i].Index == this.Dictionary.Length - 1) { word = "<s>"; }
+                else
+                {
+                    foreach (var @byte in this.Dictionary[stream[i].Index])
+                    {
+                        if (@byte == (byte) '\n')
+                            word += "\\n";
+                        else
+                            word += (char) @byte;
+                    }
+                }
+
+                Console.WriteLine($"{i} -> {stream[i].Index} >>>> \"{word}\"");
+                // Console.WriteLine($"{stream[i].Index}");
+            }
 
             return stream.ToArray();
         }

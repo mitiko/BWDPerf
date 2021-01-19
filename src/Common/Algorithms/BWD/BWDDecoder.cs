@@ -46,12 +46,14 @@ namespace BWDPerf.Common.Algorithms.BWD
                         for (int k = 0; k < 4; k++)
                         {
                             int32Arr[k] = enumerator.Current;
+                            if (k == 3) break; // Make sure we don't read 5 bytes, bc the stream count will be unaligned and too big
                             await GetNextByte();
                         }
-                        // I have no idea why this is -1, but otherwise it doesn't work
-                        count = BitConverter.ToInt32(int32Arr, 0) - 1;
+                        count = BitConverter.ToInt32(int32Arr, 0);
+                        Console.WriteLine($"Stoken size: {count}");
                     }
                     dictionary[i] = new byte[count];
+                    Console.WriteLine($"{i} -- {count}");
                     for (int j = 0; j < count; j++)
                     {
                         await GetNextByte();
@@ -60,17 +62,24 @@ namespace BWDPerf.Common.Algorithms.BWD
                 }
                 Console.WriteLine("Copied dictionary");
 
+                for (int i = 0; i < 64; i++)
+                {
+                    await GetNextByte();
+                }
+
                 for (int k = 0; k < 4; k++)
                 {
                     await GetNextByte();
                     int32Arr[k] = enumerator.Current;
                 }
                 int streamLength = BitConverter.ToInt32(int32Arr, 0);
+                Console.WriteLine($"Read stream length to be: {streamLength}");
                 var stream = new List<byte>();
                 var bits = new Queue<bool>();
                 int stokenStartIndex = 0;
 
                 // Read from stream
+                Console.WriteLine("READING FROM STREAM ------------");
                 for (int i = 0; i < streamLength;)
                 {
                     // Read from bit queue
@@ -83,27 +92,22 @@ namespace BWDPerf.Common.Algorithms.BWD
                             if (bits.Dequeue())
                                 index++;
                         }
-                        i++; // we read a symbol
+                        i++; // we read a word index
 
                         if (index == (1 << d) - 1)
                         {
                             var data = new List<byte>();
                             // This is an SToken. Only read from SToken to stream until escape char.
-                            for (int j = stokenStartIndex; /* we'll escape if we get an escape char */; j++)
+                            for (int j = stokenStartIndex; j < dictionary[stokenIndex].Length; j++)
                             {
                                 if (dictionary[stokenIndex][j] == 0xff)
                                 {
-                                    if (j + 1 < dictionary[stokenIndex].Length)
-                                    {
-                                        if (dictionary[stokenIndex][j + 1] == 0xff)
-                                        {
-                                            data.Add(0xff);
-                                            j++;
-                                            stokenStartIndex = j + 1;
-                                        }
-                                        else break;
-                                    }
-                                    else break;
+                                    if (j + 1 >= dictionary[stokenIndex].Length) break;
+
+                                    if (dictionary[stokenIndex][j + 1] == 0xff)
+                                        { data.Add(0xff); j++; }
+                                    else
+                                        { stokenStartIndex = j + 1; break; }
                                 }
                                 else data.Add(dictionary[stokenIndex][j]);
                             }
@@ -113,15 +117,15 @@ namespace BWDPerf.Common.Algorithms.BWD
                         else yield return dictionary[index];
                     }
 
+                    if (i >= streamLength) break;
                     // Write to bit queue
                     await GetNextByte();
-                    for (int j = 8; j >= 0; j--)
+                    for (int j = 7; j >= 0; j--)
                         bits.Enqueue((enumerator.Current & (1 << j)) != 0);
                     // Don't care about the bits we're discarding
                 }
                 Console.WriteLine("Copied stream");
                 Console.WriteLine("Does it run twice?");
-                break; // TODO: fix not reading all, bc of weird stream size
             }
             Console.WriteLine("Ended");
 
