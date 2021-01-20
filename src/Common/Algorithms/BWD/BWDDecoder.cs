@@ -12,7 +12,6 @@ namespace BWDPerf.Common.Algorithms.BWD
             var enumerator = input.GetAsyncEnumerator();
             while (true)
             {
-                Console.WriteLine("Run");
                 bool endOfStream = false;
                 var int32Arr = new byte[4];
 
@@ -32,7 +31,6 @@ namespace BWDPerf.Common.Algorithms.BWD
                 dictionary = new byte[BitConverter.ToInt32(int32Arr, 0)][];
                 var d = Convert.ToInt32(Math.Ceiling(Math.Log2(dictionary.Length))); // bits per token
                 int stokenIndex = (1 << d) - 1;
-                Console.WriteLine($"Dictionary size: {dictionary.Length}");
 
 
                 // Copy dictionary
@@ -50,17 +48,14 @@ namespace BWDPerf.Common.Algorithms.BWD
                             await GetNextByte();
                         }
                         count = BitConverter.ToInt32(int32Arr, 0);
-                        Console.WriteLine($"Stoken size: {count}");
                     }
                     dictionary[i] = new byte[count];
-                    Console.WriteLine($"{i} -- {count}");
                     for (int j = 0; j < count; j++)
                     {
                         await GetNextByte();
                         dictionary[i][j] = enumerator.Current;
                     }
                 }
-                Console.WriteLine("Copied dictionary");
 
                 for (int i = 0; i < 64; i++)
                 {
@@ -73,13 +68,11 @@ namespace BWDPerf.Common.Algorithms.BWD
                     int32Arr[k] = enumerator.Current;
                 }
                 int streamLength = BitConverter.ToInt32(int32Arr, 0);
-                Console.WriteLine($"Read stream length to be: {streamLength}");
                 var stream = new List<byte>();
                 var bits = new Queue<bool>();
                 int stokenStartIndex = 0;
 
                 // Read from stream
-                Console.WriteLine("READING FROM STREAM ------------");
                 for (int i = 0; i < streamLength;)
                 {
                     // Read from bit queue
@@ -124,10 +117,7 @@ namespace BWDPerf.Common.Algorithms.BWD
                         bits.Enqueue((enumerator.Current & (1 << j)) != 0);
                     // Don't care about the bits we're discarding
                 }
-                Console.WriteLine("Copied stream");
-                Console.WriteLine("Does it run twice?");
             }
-            Console.WriteLine("Ended");
 
             async Task GetNextByte()
             {

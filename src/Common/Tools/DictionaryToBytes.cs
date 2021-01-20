@@ -13,7 +13,8 @@ namespace BWDPerf.Common.Tools
             {
                 // Write out the dictionary
                 yield return dictionary;
-                // TODO: Remove BitsToUse property, by checking the first 4 bytes of the dictionary for the dictionry size
+                var dictionarySize = BitConverter.ToInt32(dictionary[0..4]);
+                var bitsPerWord = Convert.ToInt32(Math.Ceiling(Math.Log2(dictionarySize)));
 
                 var bytes = new List<byte>();
                 bytes.AddRange(BitConverter.GetBytes(stream.Length));
@@ -22,7 +23,7 @@ namespace BWDPerf.Common.Tools
                 foreach (var index in stream)
                 {
                     // Write bits of the current index to the queue
-                    for (int i = index.BitsToUse - 1; i >= 0; i--)
+                    for (int i = bitsPerWord - 1; i >= 0; i--)
                         bits.Enqueue((index.Index & (1 << i)) != 0);
 
                     // Flush out buffered bytes if any

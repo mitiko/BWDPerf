@@ -44,7 +44,7 @@ namespace BWDPerf.Common.Algorithms.BWD
             var wordCount = new OccurenceDictionary<Word>();
 
             var timer = Stopwatch.StartNew();
-            FindAllMatchingWords(in buffer, ref wordRef); // Initialize words -> O(mb)
+            FindAllMatchingWords(in buffer, ref wordRef); // Initialize words -> O(mb^2)
             Console.WriteLine($"Finding all matching words took: {timer.Elapsed}");
             timer.Restart();
             CountWords(in buffer, ref wordRef, ref wordCount); // Count the matching words
@@ -92,12 +92,9 @@ namespace BWDPerf.Common.Algorithms.BWD
 
         private double Rank(Word word, ref OccurenceDictionary<Word> wordCount)
         {
-            // return (word.Length * this.Options.BPC - (2*8 + 4)) * (wordCount[word] - 1);
-            // var t = 9375.0; // Estimate of total symbols in stream after transform
             var c = wordCount[word]; // Count of this word
             var l = word.Length;
-            return (l * this.Options.BPC - 3 * this.Options.IndexSize) * (c - 1);
-            // return c * (Math.Log2(c) + l * this.Options.BPC - Math.Log2(t)) + l * this.Options.BPC;
+            return (l * this.Options.BPC - this.Options.IndexSize) * (c - 1);
         }
 
         private void FindAllMatchingWords(in byte[] buffer, ref int[][] wordRef)
@@ -258,9 +255,8 @@ namespace BWDPerf.Common.Algorithms.BWD
 
         private DictionaryIndex[] EncodeStream(in byte[] buffer, int dictionarySize)
         {
-            int bitsToUse = this.Options.IndexSize;
             // TODO: find which index this should be
-            var stoken = new DictionaryIndex(dictionarySize - 1, bitsToUse);
+            var stoken = new DictionaryIndex(this.Dictionary.Length - 1);
             var data = new int[buffer.Length];
             int wordCount = 0;
             for (int k = 0; k < data.Length; k++)
@@ -268,10 +264,6 @@ namespace BWDPerf.Common.Algorithms.BWD
 
             for (int i = 0; i < dictionarySize; i++)
             {
-                if (i == 6)
-                {
-                    Console.WriteLine("6th word");
-                }
                 if (i == stoken.Index) break; // Don't do this for <s> tokens, they'll be what's left behind
                 var word = this.Dictionary[i];
                 for (int j = 0; j < buffer.Length; j++)
@@ -280,10 +272,6 @@ namespace BWDPerf.Common.Algorithms.BWD
                     if (data[j] != stoken.Index) continue;
                     if (j + word.Length - 1 >= buffer.Length) break; // can't fit word
                     var match = true;
-                    if (i == 6 && j == 75)
-                    {
-                        Console.WriteLine("loc");
-                    }
                     for (int s = 0; s < word.Length; s++)
                         if (buffer[j + s] != word[s] || data[j+s] != stoken.Index) { match = false; break; }
 
@@ -299,31 +287,13 @@ namespace BWDPerf.Common.Algorithms.BWD
             var stream = new List<DictionaryIndex>(capacity: wordCount);
             for (int k = 0; k < data.Length;)
             {
-                stream.Add(new DictionaryIndex((int) data[k], bitsToUse));
-                int offset = 0;
-                for (offset = 0; k+offset >= data.Length ? false : data[k] == data[k+offset]; offset++);
-                k += offset;
-            }
-
-
-            Console.WriteLine("STREAM -----------");
-            for (int i = 0; i < 100; i++)
-            {
-                string word = "";
-                if (stream[i].Index == this.Dictionary.Length - 1) { word = "<s>"; }
+                stream.Add(new DictionaryIndex((int) data[k]));
+                int offset;
+                if (data[k] == this.Dictionary.Length)
+                    for (offset = 0; k+offset >= data.Length ? false : data[k] == data[k+offset]; offset++);
                 else
-                {
-                    foreach (var @byte in this.Dictionary[stream[i].Index])
-                    {
-                        if (@byte == (byte) '\n')
-                            word += "\\n";
-                        else
-                            word += (char) @byte;
-                    }
-                }
-
-                Console.WriteLine($"{i} -> {stream[i].Index} >>>> \"{word}\"");
-                // Console.WriteLine($"{stream[i].Index}");
+                    offset = this.Dictionary[data[k]].Length;
+                k += offset;
             }
 
             return stream.ToArray();
