@@ -6,9 +6,7 @@ namespace BWDPerf.Transforms.Entities
     {
         public int Index { get; }
 
-        public DictionaryIndex(int index)
-        {
+        public DictionaryIndex(int index) =>
             this.Index = index;
-        }
     }
 }

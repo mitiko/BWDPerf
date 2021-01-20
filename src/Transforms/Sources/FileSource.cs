@@ -10,10 +10,9 @@ namespace BWDPerf.Transforms.Sources
     {
         public FileInfo File { get; }
 
-        public FileSource(string fileName)
-        {
+        public FileSource(string fileName) =>
             this.File = new FileInfo(fileName);
-        }
+
 
         public async IAsyncEnumerable<byte> Fetch()
         {
