@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using BWDPerf.Interfaces;
 
-namespace BWDPerf.Common.Serializers
+namespace BWDPerf.Transforms.Serializers
 {
     public class DiscardSerializer<Symbol> : ISerializer<Symbol>
     {

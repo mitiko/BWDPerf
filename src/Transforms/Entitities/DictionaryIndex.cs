@@ -1,4 +1,4 @@
-namespace BWDPerf.Common.Entities
+namespace BWDPerf.Transforms.Entities
 {
     // Represents an index in a dictionary.
     // Used to encode a blocks of integers with variable bits per symbol.

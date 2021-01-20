@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
 using BWDPerf.Interfaces;
-using BWDPerf.Tools;
 
-namespace BWDPerf.Common.Sources
+namespace BWDPerf.Transforms.Sources
 {
     public class FileSource : ISource<byte>
     {

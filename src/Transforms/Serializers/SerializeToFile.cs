@@ -3,7 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using BWDPerf.Interfaces;
 
-namespace BWDPerf.Common.Serializers
+namespace BWDPerf.Transforms.Serializers
 {
     public class SerializeToFile : ISerializer<byte>, ISerializer<byte[]>
     {

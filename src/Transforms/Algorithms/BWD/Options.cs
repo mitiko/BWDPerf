@@ -1,4 +1,4 @@
-namespace BWDPerf.Common.Algorithms.BWD
+namespace BWDPerf.Transforms.Algorithms.BWD
 {
     public struct Options
     {

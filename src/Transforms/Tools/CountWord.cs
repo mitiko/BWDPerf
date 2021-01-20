@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using BWDPerf.Interfaces;
 
-namespace BWDPerf.Common.Tools
+namespace BWDPerf.Transforms.Tools
 {
     public class CountWord : ICoder<byte, byte>
     {

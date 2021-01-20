@@ -1,11 +1,11 @@
 ﻿using System;
 using BWDPerf.Architecture;
-using BWDPerf.Common.Tools;
-using BWDPerf.Common.Serializers;
-using BWDPerf.Common.Sources;
+using BWDPerf.Transforms.Tools;
+using BWDPerf.Transforms.Serializers;
+using BWDPerf.Transforms.Sources;
 using System.Diagnostics;
-using BWDPerf.Common.Entities;
-using BWDPerf.Common.Algorithms.BWD;
+using BWDPerf.Transforms.Entities;
+using BWDPerf.Transforms.Algorithms.BWD;
 using BWDPerf.Interfaces;
 using System.Collections.Generic;
 using System.Linq;

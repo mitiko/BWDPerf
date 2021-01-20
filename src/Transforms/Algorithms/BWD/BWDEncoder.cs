@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using BWDPerf.Common.Entities;
+using BWDPerf.Transforms.Entities;
 using BWDPerf.Interfaces;
 using BWDPerf.Tools;
 
-namespace BWDPerf.Common.Algorithms.BWD
+namespace BWDPerf.Transforms.Algorithms.BWD
 {
     // Encode the buffer and pass it on as individual symbols or as blocks of indices
     public class BWDEncoder : ICoder<byte[], (byte[], DictionaryIndex[])>
@@ -234,7 +233,7 @@ namespace BWDPerf.Common.Algorithms.BWD
 
         private byte[] EncodeDictionary(int dictionarySize)
         {
-            var buffer = new List<byte>();
+            var buffer = new List<byte>(capacity: dictionarySize);
             buffer.AddRange(BitConverter.GetBytes(dictionarySize));
             for (int i = 0; i < dictionarySize; i++)
             {
@@ -245,10 +244,6 @@ namespace BWDPerf.Common.Algorithms.BWD
 
                 foreach (var symbol in this.Dictionary[i])
                     buffer.Add(symbol);
-            }
-            for (int i = 0; i < 64; i++)
-            {
-                buffer.Add((byte) '#');
             }
             return buffer.ToArray();
         }

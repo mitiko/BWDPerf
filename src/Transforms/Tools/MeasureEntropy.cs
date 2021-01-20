@@ -1,14 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Channels;
-using System.Threading.Tasks;
-using BWDPerf.Architecture;
-using BWDPerf.Common.Entities;
 using BWDPerf.Interfaces;
 using BWDPerf.Tools;
 
-namespace BWDPerf.Common.Tools
+namespace BWDPerf.Transforms.Tools
 {
     public class MeasureEntropy : ICoder<byte, byte>
     {

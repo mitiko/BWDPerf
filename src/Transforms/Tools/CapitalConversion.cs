@@ -1,12 +1,8 @@
-using System.Threading.Channels;
-using System.Threading.Tasks;
-using BWDPerf.Architecture;
 using BWDPerf.Interfaces;
 using System.Text;
 using System.Collections.Generic;
-using System;
 
-namespace BWDPerf.Common.Tools
+namespace BWDPerf.Transforms.Tools
 {
     public class CapitalConversion : ICoder<byte, byte>, ICoder<byte[], byte[]>, IDecoder<byte, byte>
     {

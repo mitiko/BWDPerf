@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using BWDPerf.Common.Entities;
+using BWDPerf.Transforms.Entities;
 using BWDPerf.Interfaces;
 
-namespace BWDPerf.Common.Tools
+namespace BWDPerf.Transforms.Tools
 {
     public class DictionaryToBytes : ICoder<(byte[], DictionaryIndex[]), byte[]>
     {
