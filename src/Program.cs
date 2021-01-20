@@ -27,13 +27,15 @@ var encodingTask = new BufferedFileSource(args[0], 10_000_000) // 10MB
 
 
 await encodingTask;
-Console.WriteLine($"Elapsed: {timer.Elapsed}");
+Console.WriteLine($"Compression took: {timer.Elapsed}");
+timer.Restart();
 
 var decodingTask = new FileSource($"{file.Name}.bwd")
     .ToDecoder<byte, byte[]>(new BWDDecoder())
     .Serialize(new SerializeToFile($"{file.Name}.orig"));
 
 await decodingTask;
+Console.WriteLine($"Decompression took: {timer.Elapsed}");
 
 public class CalcEntropy : ICoder<(byte[], DictionaryIndex[]), (byte[], DictionaryIndex[])>
 {

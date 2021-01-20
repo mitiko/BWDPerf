@@ -258,43 +258,53 @@ namespace BWDPerf.Common.Algorithms.BWD
 
         private DictionaryIndex[] EncodeStream(in byte[] buffer, int dictionarySize)
         {
-            // TODO: Add end of stoken in the stoken data
-            var stream = new List<DictionaryIndex>();
             int bitsToUse = this.Options.IndexSize;
-            bool stokenCheck = false;
-            var stoken = new DictionaryIndex(dictionarySize - 1, bitsToUse); // TODO: find which index this should be
+            // TODO: find which index this should be
+            var stoken = new DictionaryIndex(dictionarySize - 1, bitsToUse);
+            var data = new int[buffer.Length];
+            int wordCount = 0;
+            for (int k = 0; k < data.Length; k++)
+                data[k] = stoken.Index; // Initialize with <s> token
 
-            for (int j = 0; j < buffer.Length;)
+            for (int i = 0; i < dictionarySize; i++)
             {
-                for (int i = 0; i < dictionarySize; i++)
+                if (i == 6)
                 {
-                    if (i == dictionarySize - 1 && this.STokenData.Length > 0)
-                    { stokenCheck = true; j++; break; }
-                    var word = this.Dictionary[i];
-
-                    bool match = true;
-                    // If no space is left, no match can be found
-                    if (j + word.Length > buffer.Length) continue;
-                    var selection = buffer[j..(j + word.Length)];
+                    Console.WriteLine("6th word");
+                }
+                if (i == stoken.Index) break; // Don't do this for <s> tokens, they'll be what's left behind
+                var word = this.Dictionary[i];
+                for (int j = 0; j < buffer.Length; j++)
+                {
+                    // check if location is used
+                    if (data[j] != stoken.Index) continue;
+                    if (j + word.Length - 1 >= buffer.Length) break; // can't fit word
+                    var match = true;
+                    if (i == 6 && j == 75)
+                    {
+                        Console.WriteLine("loc");
+                    }
                     for (int s = 0; s < word.Length; s++)
-                        if (selection[s] != word[s]) { match = false; break; }
+                        if (buffer[j + s] != word[s] || data[j+s] != stoken.Index) { match = false; break; }
 
                     if (match == true)
                     {
-                        if (stokenCheck == true)
-                            stream.Add(stoken);
-                        stokenCheck = false;
-                        stream.Add(new DictionaryIndex(i, bitsToUse));
-                        j += word.Length;
-                        // hmm, does the stoken introduce problems with the counting here
-                        break;
+                        wordCount++;
+                        for (int k = 0; k < word.Length; k++)
+                            data[j+k] = i;
                     }
-
-                    if (i == dictionarySize - 1 && !match)
-                        j++;
                 }
             }
-            if (stokenCheck == true) stream.Add(stoken);
+
+            var stream = new List<DictionaryIndex>(capacity: wordCount);
+            for (int k = 0; k < data.Length;)
+            {
+                stream.Add(new DictionaryIndex((int) data[k], bitsToUse));
+                int offset = 0;
+                for (offset = 0; k+offset >= data.Length ? false : data[k] == data[k+offset]; offset++);
+                k += offset;
+            }
+
 
             Console.WriteLine("STREAM -----------");
             for (int i = 0; i < 100; i++)
