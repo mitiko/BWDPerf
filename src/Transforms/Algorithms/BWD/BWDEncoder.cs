@@ -1,10 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using BWDPerf.Transforms.Entities;
 using BWDPerf.Interfaces;
-using BWDPerf.Tools;
 
 namespace BWDPerf.Transforms.Algorithms.BWD
 {
@@ -81,12 +78,33 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             {
                 stream.Add(new DictionaryIndex((int) data[k]));
                 int offset;
-                if (data[k] == this.BWD.Dictionary.Length - 1)
+                if (data[k] == stoken.Index)
                     for (offset = 0; k+offset >= data.Length ? false : data[k] == data[k+offset]; offset++);
                 else
                     offset = this.BWD.Dictionary[data[k]].Length;
                 k += offset;
             }
+
+            // foreach (var word in stream)
+            // {
+            //     var str = "";
+            //     if (word.Index == stoken.Index)
+            //     {
+            //         str = "<s>";
+            //     }
+            //     else
+            //     {
+            //         foreach (var s in this.BWD.Dictionary[word.Index])
+            //         {
+            //             if (s == (byte) '\n')
+            //                 str += (char) s;
+            //             else
+            //                 str += (char) s;
+            //         }
+            //         str = $"\"{str}\"";
+            //     }
+            //     Console.WriteLine($"{word.Index} -- {str}");
+            // }
 
             return stream.ToArray();
         }

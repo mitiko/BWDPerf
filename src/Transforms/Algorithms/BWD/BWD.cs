@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using BWDPerf.Tools;
 using BWDPerf.Transforms.Entities;
@@ -38,7 +37,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 {
                     // The last word in the dictionary is always an <s> token
                     // If the words in the dictionary cover the whole buffer, there might not be an <s> token
-                    CollectSTokenData(in buffer, ref wordRef, ref wordCount);
+                    CollectSTokenData(in buffer);
                     this.Dictionary[i] = this.STokenData;
                     dictionarySize = i + 1;
                     break;
@@ -164,29 +163,52 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             }
         }
 
-        internal void CollectSTokenData(in byte[] buffer, ref int[][] wordRef, ref OccurenceDictionary<Word> wordCount)
+        internal void CollectSTokenData(in byte[] buffer)
         {
             var list = new List<byte>();
-            bool isNewToken = false;
-            for (int j = 0; j < buffer.Length; j++)
-            {
-                if (wordRef[0][j] != -1)
-                {
-                    if (isNewToken == true)
-                    {
-                        list.Add(0xff);
-                        wordCount.Add(this.SToken);
-                        isNewToken = false;
-                    }
+            // This is the same parsing code as in encode dictionary.
+            // TODO: Extract parsing code in a new method
+            var data = new int[buffer.Length];
+            var stoken = new DictionaryIndex(this.Dictionary.Length - 1);
+            for (int k = 0; k < data.Length; k++)
+                data[k] = this.Dictionary.Length - 1;
 
-                    list.Add(buffer[j]);
-                    if (buffer[j] == 0xff) list.Add(0xff);
+            for (int i = 0; i < this.Dictionary.Length - 1; i++)
+            {
+                var word = this.Dictionary[i];
+                for (int j = 0; j < buffer.Length; j++)
+                {
+                    // check if location is used
+                    if (data[j] != stoken.Index) continue;
+                    if (j + word.Length - 1 >= buffer.Length) break; // can't fit word
+                    var match = true;
+                    for (int s = 0; s < word.Length; s++)
+                        if (buffer[j + s] != word[s] || data[j+s] != stoken.Index) { match = false; break; }
+
+                    if (match == true)
+                    {
+                        for (int k = 0; k < word.Length; k++)
+                            data[j+k] = i;
+                    }
                 }
-                else { isNewToken = true; }
+            }
+
+            for (int k = 0; k < data.Length; k++)
+            {
+                bool readStoken = false;
+                while (data[k] == stoken.Index)
+                {
+                    if (!readStoken) readStoken = true;
+                    list.Add(buffer[k]);
+                    k++;
+                    if (k>= data.Length) break;
+                }
+
+                if (readStoken)
+                    list.Add(0xff);
             }
             this.STokenData = list.ToArray();
             return;
         }
-
     }
 }
