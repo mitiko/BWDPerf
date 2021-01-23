@@ -90,7 +90,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
                     byte[] selection = new byte[i + 1];
                     int l = wordRef[0][j];
-                    for (int index = j + 1; index < wordRef[i].Length;)
+                    // Start search from after this word ends (and word.Length is i+1)
+                    for (int index = j + (i + 1); index < wordRef[i].Length;)
                     {
                         if (wordRef[0][index] != l) { index++; continue; } // check if first character matches or don't waste my time and space
 
@@ -143,6 +144,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 if (j >= wordRef[word.Length - 1].Length) break;
                 if (wordRef[word.Length - 1][j] != word.Location) continue;
                 locations[x++] = j;
+                j += word.Length - 1;
             }
 
             for (int l = 0; l < locations.Length; l++)
