@@ -7,10 +7,10 @@ using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace BWDPerf.Tests
+namespace BWDPerf
 {
     [TestClass]
-    public class BWDStandaloneNotByteAligned
+    public class BWDStandaloneMultipleDictionariesTests
     {
         private const string _enwik4 = "../../../../data/enwik4";
         private const string _compressedFile = "../../../enwik4.bwd";
@@ -19,8 +19,8 @@ namespace BWDPerf.Tests
         [TestMethod]
         public async Task TestCompression()
         {
-            var compressTask = new BufferedFileSource(_enwik4, 10_000_000) // 10MB
-                .ToCoder(new BWDEncoder(new Options(indexSize: 6, maxWordSize: 12, bpc: 8)))
+            var compressTask = new BufferedFileSource(_enwik4, 1_000) // 1KB
+                .ToCoder(new BWDEncoder(new Options(indexSize: 8, maxWordSize: 12, bpc: 8)))
                 .ToCoder(new DictionaryToBytes())
                 .Serialize(new SerializeToFile(_compressedFile));
 

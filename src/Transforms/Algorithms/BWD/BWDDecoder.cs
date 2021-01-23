@@ -19,10 +19,14 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 if (endOfStream == true) break;
                 var bitsPerWord = Convert.ToInt32(Math.Ceiling(Math.Log2(dictionarySize))); // bits per token
                 int stokenIndex = (1 << bitsPerWord) - 1;
+                Console.WriteLine($"Read dictioary size to be {dictionarySize}");
+                Console.WriteLine($"Calculated bitsPerWord to be {bitsPerWord}");
+                Console.WriteLine($"Calculated stokenIndex to be {stokenIndex}");
 
                 var dictionary = await CopyDictionary(enumerator, dictionarySize, stokenIndex);
 
                 int streamLength = await ReadStreamLength(enumerator);
+                Console.WriteLine($"Read stream size to be {streamLength}");
                 var stream = new List<byte>();
                 var bits = new Queue<bool>();
                 int stokenStartIndex = 0;
@@ -36,7 +40,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                         // We'll read 1 word, by looking up the index in the dictionary
                         int index = ReadFromBitQueue(bits, bitsPerWord); i++;
 
-                        if (index == (1 << bitsPerWord) - 1)
+                        if (index == stokenIndex)
                         {
                             var data = ReadFromSToken(stokenIndex, ref stokenStartIndex, ref dictionary);
                             yield return data.ToArray();

@@ -50,7 +50,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 CountWords(in buffer, ref wordRef, ref wordCount);
 
                 // When all references have been encoded, save the dictionary size and exit
-                if (wordCount.Values.Sum() == 0)
+                if (wordCount.Values.Sum() == 0) // TODO: can this be just .count
                 { dictionarySize = i + 1; break; }
             }
 
@@ -76,7 +76,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
             for (int i = 0; i < wordRef.Length; i++)
             {
-                Console.WriteLine($"i = {i}");
                 for (int j = 0; j < wordRef[i].Length; j++)
                 {
                     if (wordRef[i][j] != -2) continue;

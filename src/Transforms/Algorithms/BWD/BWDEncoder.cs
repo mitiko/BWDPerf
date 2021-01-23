@@ -44,7 +44,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
         private DictionaryIndex[] EncodeStream(in byte[] buffer, int dictionarySize)
         {
-            // TODO: find which index this should be
             var stoken = new DictionaryIndex(this.BWD.Dictionary.Length - 1);
             var data = new int[buffer.Length];
             int wordCount = 0;
@@ -79,12 +78,15 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 stream.Add(new DictionaryIndex((int) data[k]));
                 int offset;
                 if (data[k] == stoken.Index)
+                {
                     for (offset = 0; k+offset >= data.Length ? false : data[k] == data[k+offset]; offset++);
+                }
                 else
                     offset = this.BWD.Dictionary[data[k]].Length;
                 k += offset;
             }
 
+            // int a = 0;
             // foreach (var word in stream)
             // {
             //     var str = "";
@@ -103,7 +105,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             //         }
             //         str = $"\"{str}\"";
             //     }
-            //     Console.WriteLine($"{word.Index} -- {str}");
+            //     Console.WriteLine($"{a} -- {word.Index} -- {str}");
+            //     a++;
             // }
 
             return stream.ToArray();
