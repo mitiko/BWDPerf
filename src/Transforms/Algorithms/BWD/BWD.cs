@@ -25,6 +25,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
         {
             int dictionarySize = 0;
             int[][] wordRef = new int[this.Options.MaxWordSize][];
+            this.STokenData = new byte[0];
             var wordCount = new OccurenceDictionary<Word>();
 
             FindAllMatchingWords(in buffer, ref wordRef); // Initialize words -> O(mb^2)
@@ -61,6 +62,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
         {
             var c = wordCount[word]; // Count of this word
             var l = word.Length;
+            // return (l * this.Options.BPC - 6) * (c - 1);
             return (l * this.Options.BPC - this.Options.IndexSize) * (c - 1);
         }
 
