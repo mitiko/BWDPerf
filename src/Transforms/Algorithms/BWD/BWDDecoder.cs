@@ -12,8 +12,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             var enumerator = input.GetAsyncEnumerator();
             while (true)
             {
-                var int32Arr = new byte[4];
-
                 var (dictionarySize, endOfStream) = await ReadDictionarySize(enumerator);
 
                 if (endOfStream == true) break;
@@ -61,13 +59,16 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
         private async Task<byte[][]> CopyDictionary(IAsyncEnumerator<byte> enumerator, int dictionarySize, int stokenIndex)
         {
+            await GetNextByte(enumerator); // read r
+            var r = enumerator.Current;
             byte[][] dictionary = new byte[dictionarySize][];
             var int32Arr = new byte[4];
             for (int i = 0; i < dictionary.Length; i++)
             {
                 await GetNextByte(enumerator);
                 int count = enumerator.Current;
-                if (i == stokenIndex)
+                // if the options used were for a bigger dictionary but we couldn't fill it, the stoken is actually at another index
+                if (i == stokenIndex && (1 << r) - 1 == stokenIndex)
                 {
                     // This is an SToken. Read a count as int32 not as a byte
                     for (int k = 0; k < 4; k++)

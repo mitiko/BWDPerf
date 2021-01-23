@@ -29,6 +29,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
         {
             var buffer = new List<byte>(capacity: dictionarySize);
             buffer.AddRange(BitConverter.GetBytes(dictionarySize));
+            buffer.Add((byte) this.BWD.Options.IndexSize);
             for (int i = 0; i < dictionarySize; i++)
             {
                 if (i == dictionarySize - 1 && this.BWD.STokenData.Length > 0)
