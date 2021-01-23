@@ -1,5 +1,7 @@
 # BWDPerf
 
+![.NET](https://github.com/Mitiko/BWDPerf/workflows/.NET/badge.svg)
+
 BWD is a dictionary coder, that provides sub-optimal dictionaries and patterned words.
 
 ## Structure of the repository
