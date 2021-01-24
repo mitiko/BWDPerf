@@ -62,7 +62,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
         {
             var c = wordCount[word]; // Count of this word
             var l = word.Length;
-            // return (l * this.Options.BPC - 6) * (c - 1);
             return (l * this.Options.BPC - this.Options.IndexSize) * (c - 1);
         }
 

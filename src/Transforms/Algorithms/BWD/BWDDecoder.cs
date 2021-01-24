@@ -37,6 +37,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     {
                         // We'll read 1 word, by looking up the index in the dictionary
                         int index = ReadFromBitQueue(bits, bitsPerWord); i++;
+                        if (i > streamLength) break;
 
                         if (index == stokenIndex)
                         {
