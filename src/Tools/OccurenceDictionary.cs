@@ -5,12 +5,15 @@ namespace BWDPerf.Tools
 {
     public class OccurenceDictionary<TKey> : Dictionary<TKey, int>
     {
-        public void Add(TKey key)
+        public bool Add(TKey key)
         {
-            if (!base.ContainsKey(key))
+            var isFirstOccurence = !base.ContainsKey(key);
+            if (isFirstOccurence)
                 base.Add(key, 1);
             else
                 base[key]++;
+
+            return isFirstOccurence;
         }
 
         public int Sum() => base.Values.Sum();

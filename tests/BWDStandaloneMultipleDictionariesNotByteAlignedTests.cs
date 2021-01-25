@@ -20,7 +20,7 @@ namespace BWDPerf.Tests
         public async Task TestCompression()
         {
             var compressTask = new BufferedFileSource(_enwik4, 1_000) // 1KB
-                .ToCoder(new BWDEncoder(new Options(indexSize: 6, maxWordSize: 12, bpc: 8)))
+                .ToCoder(new BWDEncoder(new Options(indexSize: 5, maxWordSize: 12, bpc: 8)))
                 .ToCoder(new DictionaryToBytes())
                 .Serialize(new SerializeToFile(_compressedFile));
 
@@ -31,7 +31,7 @@ namespace BWDPerf.Tests
         public async Task TestDecompression()
         {
             var decompressTask = new FileSource(_compressedFile)
-                .ToDecoder<byte, byte[]>(new BWDDecoder())
+                .ToDecoder(new BWDDecoder())
                 .Serialize(new SerializeToFile(_decompressedFile));
 
             await decompressTask;
