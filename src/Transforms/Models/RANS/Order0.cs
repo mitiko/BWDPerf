@@ -9,8 +9,7 @@ namespace BWDPerf.Transforms.Models.RANS
     {
         public Dictionary<TSymbol, int> FreqTable { get; set; }
 
-        public Order0(Dictionary<TSymbol, int> initial) =>
-            this.FreqTable = initial;
+        public void Initialize(ref Dictionary<TSymbol, int> initial) => this.FreqTable = initial;
 
         public void AddSymbol(TSymbol s) => this.FreqTable[s]++;
         public int GetFrequency(TSymbol s)
@@ -19,8 +18,8 @@ namespace BWDPerf.Transforms.Models.RANS
             // q_s = p_s * M
             // q_s >= 1
             double M = 1 << LogDenominator;
-            int q = (int) ((double) this.FreqTable[s] / this.GetDenominator() * M);
-            // return q == 0 ? 1 : q; TODO: ??? do we need this
+            // Make sure q is always at least 1
+            int q = 1 + (int) ((double) this.FreqTable[s] / this.GetDenominator() * (M - this.FreqTable.Count));
             return q;
         }
 

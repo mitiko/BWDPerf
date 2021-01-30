@@ -23,6 +23,9 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders
         {
             await foreach (var buffer in input)
             {
+                // Initialize the model
+                InitializeModel(buffer.AsSpan());
+
                 uint state = _L;
                 for (int i = buffer.Length - 1; i >= 0 ; i--)
                 {
@@ -42,6 +45,21 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders
                 // Output the state at the end. There are optimizations for using log(state) bits, but for now 32 bits is ok
                 foreach (var b in BitConverter.GetBytes(state)) yield return b;
             }
+        }
+
+        public void InitializeModel(Span<TSymbol> buffer)
+        {
+            var dict = new Dictionary<TSymbol, int>();
+            foreach (var symbol in buffer)
+            {
+                if (!dict.ContainsKey(symbol))
+                    dict.Add(symbol, 1);
+                else
+                    dict[symbol]++;
+            }
+            this.Model.Initialize(ref dict);
+            // TODO: write this data as a header, since it's static probabilities
+            // Or we can use a dynamic approach where we use an extra symbol that is followed by an unseen literal, which we encode raw
         }
     }
 }
