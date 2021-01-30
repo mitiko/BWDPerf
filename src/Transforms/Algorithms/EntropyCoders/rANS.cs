@@ -1,164 +1,47 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Threading.Tasks;
 using BWDPerf.Interfaces;
-using BWDPerf.Tools;
 
 namespace BWDPerf.Transforms.Algorithms.EntropyCoders
 {
-    public class rANS : ICoder<byte[], byte[]>, IDecoder<byte, byte>
+    public class rANS<TSymbol> : ICoder<TSymbol[], byte>
     {
-        public async IAsyncEnumerable<byte[]> Encode(IAsyncEnumerable<byte[]> input)
+        public IRANSModel<TSymbol> Model { get; }
+        // Normalization range is [L, bL), where L = kM to ensure b-uniqueness
+        // M is the denominator = sum_{i=s} (f_s)
+        // log2(b) is how many bits at a time we write to the stream.
+        // This implementation is byte aligned, so b = 256
+        // L is 1<<23, so bL = (1<<23)*256 = 1<<31 < uint.MaxValue
+        public const uint _L = 1u << 23;
+        public const int _logB = 8; // b = 256, so we emit a byte when normalizing
+        public const int _bMask = 255; // mask to get the last logB bits
+
+        public rANS(IRANSModel<TSymbol> model) =>
+            this.Model = model;
+
+        public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<TSymbol[]> input)
         {
             await foreach (var buffer in input)
             {
-                var freq = new OccurenceDictionary<Character>();
-                var readLiteral = new Character(0, false);
-                freq.Add(readLiteral);
-                BigInteger x = 0;
-                var list = new List<byte>();
-                int count = 0;
-
-                foreach (var symbol in buffer)
+                uint state = _L;
+                for (int i = buffer.Length - 1; i >= 0 ; i--)
                 {
-                    var s = new Character(symbol);
-                    var isNewSymbol = freq.Add(s);
-
-                    if (isNewSymbol)
+                    var symbol = buffer[i];
+                    int freq = this.Model.GetFrequency(symbol);
+                    int cdf = this.Model.GetCumulativeFrequency(symbol);
+                    int n = this.Model.LogDenominator;
+                    // Renormalize state by emitting a byte
+                    var state_max = ((_L >> n) << _logB) * freq;
+                    while(state >= state_max)
                     {
-                        EncodeSymbol(readLiteral);
-                        freq.Add(readLiteral);
-                        list.Add(symbol);
-                        count++;
+                        yield return (byte) (state & _bMask);
+                        state >>= _logB;
                     }
-
-                    EncodeSymbol(s);
-                    count++;
+                    state = (uint) (((state / freq) << n) + state % freq + cdf);
                 }
-
-                void EncodeSymbol(Character s)
-                {
-                    int n = Convert.ToInt32(Math.Log2(freq.Sum()));
-                    x = ((x / freq[s]) << n) + (x % freq[s]) + CDF(s, ref freq);
-                    Console.WriteLine($"x = {x}");
-                }
-
-                var int32Arr = new byte[4];
-                yield return BitConverter.GetBytes(count); // how many characters to read
-                yield return BitConverter.GetBytes(list.Count);
-                yield return BitConverter.GetBytes(x.GetByteCount());
-                yield return list.ToArray();
-                yield return x.ToByteArray();
+                // Output the state at the end. There are optimizations for using log(state) bits, but for now 32 bits is ok
+                foreach (var b in BitConverter.GetBytes(state)) yield return b;
             }
-        }
-
-        public async IAsyncEnumerable<byte> Decode(IAsyncEnumerable<byte> input)
-        {
-            var enumerator = input.GetAsyncEnumerator();
-            var freq = new OccurenceDictionary<Character>();
-            var readLiteral = new Character(0, false);
-            freq.Add(readLiteral);
-            var count = await ReadInt(enumerator);
-            var listCount = await ReadInt(enumerator);
-            var byteCount = await ReadInt(enumerator);
-
-            var arr = new byte[listCount];
-            for (int i = 0; i < arr.Length; i++)
-            { await enumerator.MoveNextAsync(); arr[i] = enumerator.Current; }
-
-            var xArr = new byte[byteCount];
-            for (int i = 0; i < xArr.Length; i++)
-            { await enumerator.MoveNextAsync(); xArr[i] = enumerator.Current; }
-
-            var x = new BigInteger(xArr);
-
-            while (x != 0)
-            {
-                int n = Convert.ToInt32(Math.Log2(freq.Sum()));
-                int mask = (1 << n) - 1;
-                var s = Symbol(x & mask, ref freq);
-                x = freq[s] * (x >> n) + (x & mask) - CDF(s, ref freq);
-                freq.Add(s);
-                if (s.IsLiteral)
-                    yield return s.Representation;
-            }
-        }
-
-        public async Task<int> ReadInt(IAsyncEnumerator<byte> enumerator)
-        {
-            var int32Arr = new byte[4];
-            for (int i = 0; i < 4; i++)
-            {
-                await enumerator.MoveNextAsync();
-                int32Arr[i] = enumerator.Current;
-            }
-            return BitConverter.ToInt32(int32Arr);
-        }
-
-        public int CDF(Character s, ref OccurenceDictionary<Character> freq)
-        {
-            var dict = freq.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
-            var cumFreq = 0;
-            var enumerator = dict.GetEnumerator();
-            enumerator.MoveNext();
-            while (enumerator.Current.Key != s)
-            {
-                cumFreq += enumerator.Current.Value;
-                enumerator.MoveNext();
-            }
-            return cumFreq;
-        }
-
-        public Character Symbol(BigInteger y, ref OccurenceDictionary<Character> freq)
-        {
-            var dict = freq.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
-            BigInteger cumFreq = 0;
-            var enumerator = dict.GetEnumerator();
-            enumerator.MoveNext();
-            while (cumFreq < y)
-            {
-                cumFreq += enumerator.Current.Value;
-                enumerator.MoveNext();
-            }
-            return enumerator.Current.Key;
-        }
-    }
-
-    public struct Character
-    {
-        public Character(byte representation, bool isLiteral)
-        {
-            this.Representation = representation;
-            this.IsLiteral = isLiteral;
-        }
-
-        public Character(byte representation)
-        {
-            this.Representation = representation;
-            this.IsLiteral = true;
-        }
-
-        public byte Representation { get; set; }
-        public bool IsLiteral { get; set; }
-
-        public static bool operator==(Character a, Character b) =>
-            a.Representation == b.Representation &&
-            a.IsLiteral == b.IsLiteral;
-
-        public static bool operator!=(Character a, Character b) => !(a == b);
-
-        public override bool Equals(object obj)
-        {
-            return obj is Character character &&
-                   Representation == character.Representation &&
-                   IsLiteral == character.IsLiteral;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Representation, IsLiteral);
         }
     }
 }
