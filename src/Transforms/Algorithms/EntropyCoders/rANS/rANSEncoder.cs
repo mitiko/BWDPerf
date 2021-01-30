@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using BWDPerf.Interfaces;
 
-namespace BWDPerf.Transforms.Algorithms.EntropyCoders
+namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
 {
-    public class rANS<TSymbol> : ICoder<TSymbol[], byte>
+    public class rANSEncoder<TSymbol> : ICoder<TSymbol[], byte>
     {
         public IRANSModel<TSymbol> Model { get; }
+        public IConverter<TSymbol> Converter { get; }
+
         // Normalization range is [L, bL), where L = kM to ensure b-uniqueness
         // M is the denominator = sum_{i=s} (f_s)
         // log2(b) is how many bits at a time we write to the stream.
@@ -16,15 +18,20 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders
         public const int _logB = 8; // b = 256, so we emit a byte when normalizing
         public const int _bMask = 255; // mask to get the last logB bits
 
-        public rANS(IRANSModel<TSymbol> model) =>
+        public rANSEncoder(IRANSModel<TSymbol> model, IConverter<TSymbol> converter)
+        {
             this.Model = model;
+            this.Converter = converter;
+        }
 
         public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<TSymbol[]> input)
         {
             await foreach (var buffer in input)
             {
                 // Initialize the model
-                InitializeModel(buffer.AsSpan());
+                var header = InitializeModel(buffer.AsSpan());
+                // Print header (static order0 distribution)
+                foreach (var b in header) yield return b;
 
                 uint state = _L;
                 for (int i = buffer.Length - 1; i >= 0 ; i--)
@@ -47,7 +54,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders
             }
         }
 
-        public void InitializeModel(Span<TSymbol> buffer)
+        public byte[] InitializeModel(Span<TSymbol> buffer)
         {
             var dict = new Dictionary<TSymbol, int>();
             foreach (var symbol in buffer)
@@ -58,8 +65,14 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders
                     dict[symbol]++;
             }
             this.Model.Initialize(ref dict);
-            // TODO: write this data as a header, since it's static probabilities
-            // Or we can use a dynamic approach where we use an extra symbol that is followed by an unseen literal, which we encode raw
+            var list = new List<byte>();
+            list.AddRange(BitConverter.GetBytes(dict.Count));
+            foreach (var kv in dict)
+            {
+                list.AddRange(this.Converter.Convert(kv.Key));
+                list.AddRange(BitConverter.GetBytes(kv.Value));
+            }
+            return list.ToArray();
         }
     }
 }

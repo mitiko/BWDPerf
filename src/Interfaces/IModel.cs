@@ -11,6 +11,7 @@ namespace BWDPerf.Interfaces
         public int GetDenominator();
 
         public int GetCumulativeFrequency(TSymbol s);
+        public TSymbol GetSymbol(int y);
 
         public void AddSymbol(TSymbol s);
     }
