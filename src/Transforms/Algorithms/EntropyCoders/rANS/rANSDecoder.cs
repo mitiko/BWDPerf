@@ -30,10 +30,11 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
             for (int i = 0; i < 4; i++)
             {
                 await enumerator.MoveNextAsync();
-                uint32Arr[0] = enumerator.Current;
+                uint32Arr[i] = enumerator.Current;
             }
 
             uint state = BitConverter.ToUInt32(uint32Arr);
+            Console.WriteLine($"Initial state: {state}");
             var mask = (1 << this.Model.LogDenominator) - 1;
 
             while (true)
@@ -72,6 +73,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
         {
             var dict = new Dictionary<TSymbol, int>();
             var size = await GetInt();
+            Console.WriteLine($"Decoder got size: {size}");
             for (int i = 0; i < size; i++)
             {
                 var arr = new byte[this.Converter.BytesPerSymbol];
@@ -83,6 +85,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
                 TSymbol key = this.Converter.Convert(arr);
                 int value = await GetInt();
                 dict.Add(key, value);
+                Console.WriteLine($"Decomp dict: {key} -- {value}");
             }
 
             return dict;
@@ -93,7 +96,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
                 for (int i = 0; i < 4; i++)
                 {
                     await enumerator.MoveNextAsync();
-                    int32Arr[0] = enumerator.Current;
+                    int32Arr[i] = enumerator.Current;
                 }
                 return BitConverter.ToInt32(int32Arr);
             }

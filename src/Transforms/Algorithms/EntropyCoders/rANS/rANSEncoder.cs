@@ -28,12 +28,14 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
         {
             await foreach (var buffer in input)
             {
+                var list = new Stack<byte>();
                 // Initialize the model
                 var header = InitializeModel(buffer.AsSpan());
                 // Print header (static order0 distribution)
                 foreach (var b in header) yield return b;
 
                 uint state = _L;
+                Console.WriteLine($"State low: {_L}; high: {_L << _logB}");
                 for (int i = buffer.Length - 1; i >= 0 ; i--)
                 {
                     var symbol = buffer[i];
@@ -41,16 +43,23 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
                     int cdf = this.Model.GetCumulativeFrequency(symbol);
                     int n = this.Model.LogDenominator;
                     // Renormalize state by emitting a byte
-                    var state_max = ((_L >> n) << _logB) * freq;
+                    var state_max = ((_L << _logB) >> n) * freq;
                     while(state >= state_max)
                     {
-                        yield return (byte) (state & _bMask);
+                        list.Push((byte) (state & _bMask));
                         state >>= _logB;
                     }
                     state = (uint) (((state / freq) << n) + state % freq + cdf);
                 }
+                Console.WriteLine($"Ending state: {state}");
                 // Output the state at the end. There are optimizations for using log(state) bits, but for now 32 bits is ok
-                foreach (var b in BitConverter.GetBytes(state)) yield return b;
+                var bytes = BitConverter.GetBytes(state);
+                foreach (var b in bytes)
+                    yield return b;
+                while (list.Count > 0)
+                {
+                    yield return list.Pop();
+                }
             }
         }
 

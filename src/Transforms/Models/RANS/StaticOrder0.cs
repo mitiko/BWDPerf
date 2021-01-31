@@ -12,6 +12,8 @@ namespace BWDPerf.Transforms.Models.RANS
 
         public void Initialize(ref Dictionary<TSymbol, int> initial)
         {
+            var den = initial.Values.Sum();
+            Console.WriteLine($"Denominator: {den}");
             // Quantize values
             foreach (var kv in initial)
             {
@@ -20,8 +22,10 @@ namespace BWDPerf.Transforms.Models.RANS
                 // q_s >= 1
                 double M = 1 << LogDenominator;
                 // Make sure q is always at least 1
-                int q = 1 + (int) ((double) initial[kv.Key] / this.GetDenominator() * (M - initial.Count));
+                int q = 1 + (int) ((double) initial[kv.Key] / den * (M - initial.Count));
                 this.FreqTable.Add(kv.Key, q);
+
+                Console.WriteLine($"Adding to dict: {kv.Key} -- {q}");
             }
         }
 
@@ -30,7 +34,7 @@ namespace BWDPerf.Transforms.Models.RANS
         public int GetFrequency(TSymbol s) => this.FreqTable[s];
 
         public int GetDenominator() => this.FreqTable.Values.Sum();
-        public int LogDenominator => 31;
+        public int LogDenominator => 23; // same as _L
 
         public int GetCumulativeFrequency(TSymbol s)
         {
@@ -57,7 +61,8 @@ namespace BWDPerf.Transforms.Models.RANS
                 if (y < cum)
                     return this.FreqTable.ElementAt(i).Key;
             }
-            return default; // symbol was not found - should be impossible
+            // Assume the decoder keeps track of state being normalized nad output the last symbol;
+            return enumerator.Current.Key;
         }
     }
 }
