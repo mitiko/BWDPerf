@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using BWDPerf.Interfaces;
 
-namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
+namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
 {
-    public class rANSDecoder<TSymbol> : IDecoder<byte, TSymbol>
+    public class StaticRANSDecoder<TSymbol> : IDecoder<byte, TSymbol>
     {
         public IRANSModel<TSymbol> Model { get; }
         public IConverter<TSymbol> Converter { get; }
@@ -14,7 +14,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
         public const uint _L = 1u << 23;
         public const int _logB = 8;
 
-        public rANSDecoder(IRANSModel<TSymbol> model, IConverter<TSymbol> converter)
+        public StaticRANSDecoder(IRANSModel<TSymbol> model, IConverter<TSymbol> converter)
         {
             this.Model = model;
             this.Converter = converter;
@@ -34,7 +34,6 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
             }
 
             uint state = BitConverter.ToUInt32(uint32Arr);
-            Console.WriteLine($"Initial state: {state}");
             var mask = (1 << this.Model.LogDenominator) - 1;
 
             while (true)
@@ -55,7 +54,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
                 {
                     if (!await enumerator.MoveNextAsync())
                     {
-                        // stream ended
+                        // Stream ended
                         if (state == _L) end = true;
                         else throw new Exception("Incorrect decode");
                     }
@@ -73,7 +72,6 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
         {
             var dict = new Dictionary<TSymbol, int>();
             var size = await GetInt();
-            Console.WriteLine($"Decoder got size: {size}");
             for (int i = 0; i < size; i++)
             {
                 var arr = new byte[this.Converter.BytesPerSymbol];
@@ -85,7 +83,6 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.rANS
                 TSymbol key = this.Converter.Convert(arr);
                 int value = await GetInt();
                 dict.Add(key, value);
-                Console.WriteLine($"Decomp dict: {key} -- {value}");
             }
 
             return dict;

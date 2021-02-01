@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BWDPerf.Interfaces;
 
-namespace BWDPerf.Transforms.Models.RANS
+namespace BWDPerf.Transforms.Models.Static.RANS
 {
     public class StaticOrder0<TSymbol> : IRANSModel<TSymbol>
         where TSymbol : struct
@@ -13,7 +13,6 @@ namespace BWDPerf.Transforms.Models.RANS
         public void Initialize(ref Dictionary<TSymbol, int> initial)
         {
             var den = initial.Values.Sum();
-            Console.WriteLine($"Denominator: {den}");
             // Quantize values
             foreach (var kv in initial)
             {
@@ -24,8 +23,6 @@ namespace BWDPerf.Transforms.Models.RANS
                 // Make sure q is always at least 1
                 int q = 1 + (int) ((double) initial[kv.Key] / den * (M - initial.Count));
                 this.FreqTable.Add(kv.Key, q);
-
-                Console.WriteLine($"Adding to dict: {kv.Key} -- {q}");
             }
         }
 
@@ -61,8 +58,7 @@ namespace BWDPerf.Transforms.Models.RANS
                 if (y < cum)
                     return this.FreqTable.ElementAt(i).Key;
             }
-            // Assume the decoder keeps track of state being normalized nad output the last symbol;
-            return enumerator.Current.Key;
+            throw new Exception("Symbol not found - state must have been out of the normalization range");
         }
     }
 }
