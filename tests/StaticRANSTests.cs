@@ -1,27 +1,27 @@
 using System.IO;
 using System.Threading.Tasks;
 using BWDPerf.Architecture;
-using BWDPerf.Transforms.Algorithms.BWD;
+using BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS;
+using BWDPerf.Transforms.Converters;
+using BWDPerf.Transforms.Models.Static.RANS;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
-using BWDPerf.Transforms.Tools;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace BWDPerf.Tests
 {
     [TestClass]
-    public class BWDStandaloneMultipleDictionariesNotByteAlignedTests
+    public class StaticRANSTests
     {
-        private const string _enwik4 = "../../../../data/enwik4";
-        private const string _compressedFile = "../../../enwik4.bwd";
+        private const string _file = "../../../../data/enwik4";
+        private const string _compressedFile = "../../../enwik4.rans";
         private const string _decompressedFile = "../../../decompressed";
 
         [TestMethod]
         public async Task TestCompression()
         {
-            var compressTask = new BufferedFileSource(_enwik4, 1_000) // 1KB
-                .ToCoder(new BWDEncoder(new Options(indexSize: 5, maxWordSize: 12, bpc: 8)))
-                .ToCoder(new DictionaryToBytes())
+            var compressTask = new BufferedFileSource(_file, 10_000_000) // 10MB
+                .ToCoder(new StaticRANSEncoder<byte>(new StaticOrder0<byte>(), new ByteConverter()))
                 .Serialize(new SerializeToFile(_compressedFile));
 
             await compressTask;
@@ -31,7 +31,7 @@ namespace BWDPerf.Tests
         public async Task TestDecompression()
         {
             var decompressTask = new FileSource(_compressedFile)
-                .ToDecoder(new BWDDecoder())
+                .ToDecoder(new StaticRANSDecoder<byte>(new StaticOrder0<byte>(), new ByteConverter()))
                 .Serialize(new SerializeToFile(_decompressedFile));
 
             await decompressTask;
@@ -40,7 +40,7 @@ namespace BWDPerf.Tests
         [TestMethod]
         public void TestIntegrity()
         {
-            byte[] original = File.ReadAllBytes(_enwik4);
+            byte[] original = File.ReadAllBytes(_file);
             byte[] decompressed = File.ReadAllBytes(_decompressedFile);
             if (original.Length == decompressed.Length)
             {

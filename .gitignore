@@ -7,6 +7,7 @@ data/enwik*
 !data/enwik4
 decompressed
 *.bwd
+*.rans
 
 # User-specific files
 *.rsuser
