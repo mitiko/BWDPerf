@@ -21,15 +21,15 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             this.SToken = new Word(-1, 0);
         }
 
-        internal int CalculateDictionary(in byte[] buffer)
+        internal int CalculateDictionary(ReadOnlyMemory<byte> buffer)
         {
             int dictionarySize = 0;
             int[][] wordRef = new int[this.Options.MaxWordSize][];
             this.STokenData = new byte[0];
             var wordCount = new OccurenceDictionary<Word>();
 
-            FindAllMatchingWords(in buffer, ref wordRef); // Initialize words -> O(mb^2)
-            CountWords(in buffer, ref wordRef, ref wordCount); // Count the matching words
+            FindAllMatchingWords(buffer, ref wordRef); // Initialize words -> O(mb^2)
+            CountWords(ref wordRef, ref wordCount); // Count the matching words
 
             for (int i = 0; i < this.Dictionary.Length; i++)
             {
@@ -38,7 +38,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 {
                     // The last word in the dictionary is always an <s> token
                     // If the words in the dictionary cover the whole buffer, there might not be an <s> token
-                    CollectSTokenData(in buffer);
+                    CollectSTokenData(buffer, ref wordRef);
                     this.Dictionary[i] = this.STokenData;
                     dictionarySize = i + 1;
                     break;
@@ -46,9 +46,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
                 word = GetHighestRankedWord(ref wordCount);
                 // Save the word to the dictionary
-                this.Dictionary[i] = buffer[word.Location..(word.Location + word.Length)];
-                SplitByWord(in buffer, word, ref wordRef, ref wordCount);
-                CountWords(in buffer, ref wordRef, ref wordCount);
+                this.Dictionary[i] = buffer.Slice(word.Location, word.Length).ToArray();
+                SplitByWord(buffer, word, ref wordRef, ref wordCount);
+                CountWords(ref wordRef, ref wordCount);
 
                 // When all references have been encoded, save the dictionary size and exit
                 if (wordCount.Values.Sum() == 0) // TODO: can this be just .count
@@ -65,7 +65,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             return (l * this.Options.BPC - this.Options.IndexSize) * (c - 1);
         }
 
-        internal void FindAllMatchingWords(in byte[] buffer, ref int[][] wordRef)
+        internal void FindAllMatchingWords(ReadOnlyMemory<byte> buffer, ref int[][] wordRef)
         {
             // Initialize the matrix
             for (int i = 0; i < wordRef.Length; i++)
@@ -85,21 +85,20 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     if (i == 0)
                     {
                         for (int index = j + 1; index < wordRef[i].Length; index++)
-                            if (buffer[j] == buffer[index]) wordRef[i][index] = j;
+                            if (buffer.Span[j] == buffer.Span[index]) wordRef[i][index] = j;
                         continue;
                     }
 
-                    byte[] selection = new byte[i + 1];
                     int l = wordRef[0][j];
                     // Start search from after this word ends (and word.Length is i+1)
                     for (int index = j + (i + 1); index < wordRef[i].Length;)
                     {
                         if (wordRef[0][index] != l) { index++; continue; } // check if first character matches or don't waste my time and space
 
-                        selection = buffer[index..(index + i + 1)];
+                        var selection = buffer.Slice(index, i + 1).Span;
                         bool match = true;
                         for (int s = 0; s < selection.Length; s++)
-                            if (buffer[j + s] != selection[s]) { match = false; break; }
+                            if (buffer.Span[j + s] != selection[s]) { match = false; break; }
 
                         if (match == true) { wordRef[i][index] = j; index += (i + 1); }
                         else { index++; }
@@ -108,7 +107,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             }
         }
 
-        internal void CountWords(in byte[] buffer, ref int[][] wordRef, ref OccurenceDictionary<Word> wordCount)
+        internal void CountWords(ref int[][] wordRef, ref OccurenceDictionary<Word> wordCount)
         {
             wordCount.Clear();
             for (int i = 0; i < wordRef.Length; i++)
@@ -136,7 +135,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             return bestWord;
         }
 
-        internal void SplitByWord(in byte[] buffer, Word word, ref int[][] wordRef, ref OccurenceDictionary<Word> wordCount)
+        internal void SplitByWord(ReadOnlyMemory<byte> buffer, Word word, ref int[][] wordRef, ref OccurenceDictionary<Word> wordCount)
         {
             var locations = new int[wordCount[word]]; int x = 0;
             for (int j = 0; j < buffer.Length; j++)
@@ -165,7 +164,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             }
         }
 
-        internal void CollectSTokenData(in byte[] buffer)
+        internal void CollectSTokenData(ReadOnlyMemory<byte> buffer, ref int[][] wordRef)
         {
             var list = new List<byte>();
             // This is the same parsing code as in encode dictionary.
@@ -185,7 +184,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     if (j + word.Length - 1 >= buffer.Length) break; // can't fit word
                     var match = true;
                     for (int s = 0; s < word.Length; s++)
-                        if (buffer[j + s] != word[s] || data[j+s] != stoken.Index) { match = false; break; }
+                        if (buffer.Span[j + s] != word[s] || data[j+s] != stoken.Index) { match = false; break; }
 
                     if (match == true)
                     {
@@ -201,7 +200,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 while (data[k] == stoken.Index)
                 {
                     if (!readStoken) readStoken = true;
-                    list.Add(buffer[k]);
+                    list.Add(buffer.Span[k]);
                     k++;
                     if (k>= data.Length) break;
                 }
@@ -210,7 +209,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     list.Add(0xff);
             }
             this.STokenData = list.ToArray();
-            return;
         }
     }
 }

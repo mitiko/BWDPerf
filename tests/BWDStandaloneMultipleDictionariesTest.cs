@@ -7,7 +7,7 @@ using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace BWDPerf
+namespace BWDPerf.Tests
 {
     [TestClass]
     public class BWDStandaloneMultipleDictionariesTests
@@ -31,7 +31,7 @@ namespace BWDPerf
         public async Task TestDecompression()
         {
             var decompressTask = new FileSource(_compressedFile)
-                .ToDecoder<byte, byte[]>(new BWDDecoder())
+                .ToDecoder(new BWDDecoder())
                 .Serialize(new SerializeToFile(_decompressedFile));
 
             await decompressTask;

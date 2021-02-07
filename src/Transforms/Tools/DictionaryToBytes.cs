@@ -5,26 +5,26 @@ using BWDPerf.Interfaces;
 
 namespace BWDPerf.Transforms.Tools
 {
-    public class DictionaryToBytes : ICoder<(byte[], DictionaryIndex[]), byte[]>
+    public class DictionaryToBytes : ICoder<(ReadOnlyMemory<byte>, ReadOnlyMemory<DictionaryIndex>), ReadOnlyMemory<byte>>
     {
-        public async IAsyncEnumerable<byte[]> Encode(IAsyncEnumerable<(byte[], DictionaryIndex[])> input)
+        public async IAsyncEnumerable<ReadOnlyMemory<byte>> Encode(IAsyncEnumerable<(ReadOnlyMemory<byte>, ReadOnlyMemory<DictionaryIndex>)> input)
         {
             await foreach (var (dictionary, stream) in input)
             {
                 // Write out the dictionary
                 yield return dictionary;
-                var dictionarySize = BitConverter.ToInt32(dictionary[0..4]);
+                var dictionarySize = BitConverter.ToInt32(dictionary.Slice(0, 4).Span);
                 var bitsPerWord = Convert.ToInt32(Math.Ceiling(Math.Log2(dictionarySize)));
 
                 var bytes = new List<byte>();
                 bytes.AddRange(BitConverter.GetBytes(stream.Length));
                 Console.WriteLine($"Stream size is {stream.Length} and dict size is {dictionarySize}");
                 var bits = new Queue<bool>();
-                foreach (var index in stream)
+                for (int k = 0; k < stream.Length; k++)
                 {
                     // Write bits of the current index to the queue
                     for (int i = bitsPerWord - 1; i >= 0; i--)
-                        bits.Enqueue((index.Index & (1 << i)) != 0);
+                        bits.Enqueue((stream.Span[k].Index & (1 << i)) != 0);
 
                     // Flush out buffered bytes if any
                     while (bits.Count >= 8) bytes.Add(ReadFromBitQueue());

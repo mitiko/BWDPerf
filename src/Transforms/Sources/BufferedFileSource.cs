@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
@@ -6,7 +7,7 @@ using BWDPerf.Interfaces;
 
 namespace BWDPerf.Transforms.Sources
 {
-    public class BufferedFileSource : ISource<byte[]>
+    public class BufferedFileSource : ISource<ReadOnlyMemory<byte>>
     {
         public FileInfo File { get; }
         public int BufferSize { get; }
@@ -19,7 +20,7 @@ namespace BWDPerf.Transforms.Sources
             this.BufferSize = bufferSize;
         }
 
-        public async IAsyncEnumerable<byte[]> Fetch()
+        public async IAsyncEnumerable<ReadOnlyMemory<byte>> Fetch()
         {
             var reader = PipeReader.Create(this.File.OpenRead(), new StreamPipeReaderOptions(bufferSize: this.BufferSize));
 

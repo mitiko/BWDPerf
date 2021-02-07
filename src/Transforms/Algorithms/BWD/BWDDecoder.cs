@@ -5,9 +5,9 @@ using BWDPerf.Interfaces;
 
 namespace BWDPerf.Transforms.Algorithms.BWD
 {
-    public class BWDDecoder : IDecoder<byte, byte[]>
+    public class BWDDecoder : IDecoder<byte, ReadOnlyMemory<byte>>
     {
-        public async IAsyncEnumerable<byte[]> Decode(IAsyncEnumerable<byte> input)
+        public async IAsyncEnumerable<ReadOnlyMemory<byte>> Decode(IAsyncEnumerable<byte> input)
         {
             var enumerator = input.GetAsyncEnumerator();
             while (true)

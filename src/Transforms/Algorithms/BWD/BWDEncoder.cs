@@ -6,20 +6,20 @@ using BWDPerf.Interfaces;
 namespace BWDPerf.Transforms.Algorithms.BWD
 {
     // Encode the buffer and pass it on as individual symbols or as blocks of indices
-    public class BWDEncoder : ICoder<byte[], (byte[], DictionaryIndex[])>
+    public class BWDEncoder : ICoder<ReadOnlyMemory<byte>, (ReadOnlyMemory<byte>, ReadOnlyMemory<DictionaryIndex>)>
     {
         private BWD BWD { get; }
 
         public BWDEncoder(Options options) =>
             this.BWD = new BWD(options);
 
-        public async IAsyncEnumerable<(byte[], DictionaryIndex[])> Encode(IAsyncEnumerable<byte[]> input)
+        public async IAsyncEnumerable<(ReadOnlyMemory<byte>, ReadOnlyMemory<DictionaryIndex>)> Encode(IAsyncEnumerable<ReadOnlyMemory<byte>> input)
         {
             await foreach (var buffer in input)
             {
-                var dictionarySize = this.BWD.CalculateDictionary(in buffer);
+                var dictionarySize = this.BWD.CalculateDictionary(buffer);
                 byte[] dictionary = EncodeDictionary(dictionarySize);
-                DictionaryIndex[] stream = EncodeStream(in buffer, dictionarySize);
+                DictionaryIndex[] stream = EncodeStream(buffer, dictionarySize);
 
                 yield return (dictionary, stream);
             }
@@ -43,8 +43,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             return buffer.ToArray();
         }
 
-        private DictionaryIndex[] EncodeStream(in byte[] buffer, int dictionarySize)
+        private DictionaryIndex[] EncodeStream(ReadOnlyMemory<byte> buffer, int dictionarySize)
         {
+            // TODO: Use the FM-index to do parsing in O(n)
             var stoken = new DictionaryIndex(this.BWD.Dictionary.Length - 1);
             var data = new int[buffer.Length];
             int wordCount = 0;
@@ -62,7 +63,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     if (j + word.Length - 1 >= buffer.Length) break; // can't fit word
                     var match = true;
                     for (int s = 0; s < word.Length; s++)
-                        if (buffer[j + s] != word[s] || data[j+s] != stoken.Index) { match = false; break; }
+                        if (buffer.Span[j + s] != word[s] || data[j+s] != stoken.Index) { match = false; break; }
 
                     if (match == true)
                     {

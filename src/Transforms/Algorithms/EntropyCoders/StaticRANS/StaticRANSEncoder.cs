@@ -4,7 +4,7 @@ using BWDPerf.Interfaces;
 
 namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
 {
-    public class StaticRANSEncoder<TSymbol> : ICoder<TSymbol[], byte>
+    public class StaticRANSEncoder<TSymbol> : ICoder<ReadOnlyMemory<TSymbol>, byte>
     {
         public IRANSModel<TSymbol> Model { get; }
         public IConverter<TSymbol> Converter { get; }
@@ -24,12 +24,12 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
             this.Converter = converter;
         }
 
-        public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<TSymbol[]> input)
+        public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<ReadOnlyMemory<TSymbol>> input)
         {
             await foreach (var buffer in input)
             {
                 // Initialize the model
-                var header = InitializeModel(buffer.AsSpan());
+                var header = InitializeModel(buffer.Span);
                 // Print header (static order0 distribution)
                 foreach (var b in header) yield return b;
                 var stream = new byte[buffer.Length];
@@ -38,7 +38,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
                 uint state = _L;
                 for (int i = buffer.Length - 1; i >= 0 ; i--)
                 {
-                    var symbol = buffer[i];
+                    var symbol = buffer.Span[i];
                     int freq = this.Model.GetFrequency(symbol);
                     int cdf = this.Model.GetCumulativeFrequency(symbol);
                     int n = this.Model.LogDenominator;
@@ -60,7 +60,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
             }
         }
 
-        public byte[] InitializeModel(Span<TSymbol> buffer)
+        public byte[] InitializeModel(ReadOnlySpan<TSymbol> buffer)
         {
             var dict = new Dictionary<TSymbol, int>();
             foreach (var symbol in buffer)

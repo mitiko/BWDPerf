@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -5,7 +6,7 @@ using BWDPerf.Interfaces;
 
 namespace BWDPerf.Transforms.Serializers
 {
-    public class SerializeToFile : ISerializer<byte>, ISerializer<byte[]>
+    public class SerializeToFile : ISerializer<byte>, ISerializer<byte[]>, ISerializer<ReadOnlyMemory<byte>>
     {
         public FileInfo File { get; }
 
@@ -32,6 +33,17 @@ namespace BWDPerf.Transforms.Serializers
 
             await foreach (var buffer in input)
                 writer.Write(buffer, 0, buffer.Length);
+
+            writer.Flush();
+            writer.Close();
+        }
+
+        public async Task Complete(IAsyncEnumerable<ReadOnlyMemory<byte>> input)
+        {
+            using var writer = new BinaryWriter(this.File.OpenWrite());
+
+            await foreach (var buffer in input)
+                writer.Write(buffer.Span);
 
             writer.Flush();
             writer.Close();
