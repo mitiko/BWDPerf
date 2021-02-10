@@ -6,6 +6,8 @@
 data/enwik*
 !data/enwik4
 decompressed
+encoded
+decoded
 *.bwd
 *.rans
 

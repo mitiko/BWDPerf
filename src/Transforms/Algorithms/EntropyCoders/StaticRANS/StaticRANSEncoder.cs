@@ -60,7 +60,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
             }
         }
 
-        public byte[] InitializeModel(ReadOnlySpan<TSymbol> buffer)
+        private byte[] InitializeModel(ReadOnlySpan<TSymbol> buffer)
         {
             var dict = new Dictionary<TSymbol, int>();
             foreach (var symbol in buffer)

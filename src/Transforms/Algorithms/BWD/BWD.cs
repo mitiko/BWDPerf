@@ -6,7 +6,7 @@ using BWDPerf.Transforms.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD
 {
-    public class BWD
+    internal class BWD
     {
         internal Options Options { get; }
         internal byte[][] Dictionary { get; }
@@ -28,6 +28,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             this.STokenData = new byte[0];
             var wordCount = new OccurenceDictionary<Word>();
 
+            // var timer = System.Diagnostics.Stopwatch.StartNew();
+            // var sa = new SuffixArray(buffer);
+            // Console.WriteLine($"Creating the suffix array took: {timer.Elapsed}");
             FindAllMatchingWords(buffer, ref wordRef); // Initialize words -> O(mb^2)
             CountWords(ref wordRef, ref wordCount); // Count the matching words
 
