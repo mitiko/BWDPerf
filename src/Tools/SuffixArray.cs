@@ -7,14 +7,12 @@ namespace BWDPerf.Tools
     public class SuffixArray
     {
         public int[] SA { get; }
-        public Dictionary<byte, int> Alphabet { get; } = new();
-        public int[] Rank { get; }
 
-        public SuffixArray(ReadOnlyMemory<byte> input)
+        public SuffixArray(ReadOnlyMemory<byte> data)
         {
             // Prefix doubling - taking O(n log n) time
-            int n = input.Length;
-            var s = input.Span;
+            int n = data.Length;
+            var s = data.Span;
             const int alphabet = 256;
             var p = new int[n];
             var c = new int[n];
@@ -66,30 +64,6 @@ namespace BWDPerf.Tools
             }
 
             this.SA = p;
-            var dict = new Dictionary<byte, int>();
-            foreach (var sym in s)
-            {
-                if (!dict.ContainsKey(sym))
-                    dict.Add(sym, 1);
-                else
-                    dict[sym]++;
-            }
-            var symbolSet = dict.Keys.OrderBy(x => x);
-            this.Rank = new int[symbolSet.Count()];
-            for (int i = 0; i < symbolSet.Count(); i++)
-            {
-                var sym = symbolSet.ElementAt(i);
-                this.Rank[i] = dict[sym];
-                this.Alphabet.Add(sym, i);
-            }
-
-            int cum = 0;
-            for (int i = 0; i < this.Rank.Length; i++)
-            {
-                int count = this.Rank[i];
-                this.Rank[i] = cum;
-                cum += count;
-            }
         }
 
         public void Print()
@@ -97,23 +71,60 @@ namespace BWDPerf.Tools
             Console.WriteLine("Suffix array:");
             foreach (var x in this.SA)
                 Console.WriteLine(x);
-
-            Console.WriteLine("CNT:");
-            foreach (var x in this.Rank)
-                Console.WriteLine(x);
         }
 
-        public int[] Search(ReadOnlyMemory<byte> word)
+        public int[] Search(ReadOnlyMemory<byte> data, ReadOnlyMemory<byte> word)
         {
-            var key = this.Alphabet[word.Span[0]];
-            int start = this.Rank[this.Alphabet[word.Span[word.Length-1]]];
-            // int end =
-            // for (int i = word.Length - 1; i >= 0 ; i--)
-            // {
-            //     start = Rank[key];
-            // }
+            // Binary search on the sorted suffix array takes O(m log n) worst case for word size m
+            // FM-index stores BWT and can search in O(m) with a constant rank function using a wavelet tree
+            int low = 0;
+            int high = data.Length;
+            int match = -1;
+            while (low < high)
+            {
+                int mid = (low + high) / 2;
+                for (int i = 0; i < word.Length; i++)
+                {
+                    var sym = data.Span[this.SA[mid] + i];
+                    if (sym == word.Span[i])
+                    {
+                        if (i == word.Length - 1)
+                            match = mid;
+                        continue;
+                    }
 
-            throw new NotImplementedException();
+                    if (word.Span[i] > sym)
+                        low = mid + 1;
+                    if (word.Span[i] < sym)
+                        high = mid;
+                    break;
+                }
+                if (match != -1)
+                    break;
+            }
+
+            if (match == -1)
+                return new int[0];
+
+            int first = match; // first match inclusive
+            int last = match;  // last  match exclusive
+            while (IsMatch(first - 1))
+                first--;
+            while (IsMatch(last))
+                last++;
+
+            return this.SA[first..last];
+
+            bool IsMatch(int index)
+            {
+                if (index < 0) return false;
+                if (index >= this.SA.Length) return false;
+                var pos = this.SA[index];
+                if (pos + 1 >= data.Length) return false;
+                for (int i = 0; i < word.Length; i++)
+                    if (data.Span[pos + i] != word.Span[i]) return false;
+                return true;
+            }
         }
     }
 }
