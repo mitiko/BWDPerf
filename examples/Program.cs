@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using BWDPerf.Architecture;
-using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
@@ -33,72 +32,3 @@ var decodeTask = compressedSource
 
 await decodeTask;
 Console.WriteLine($"Decompression took: {timer.Elapsed}");
-
-
-// var data = new byte[]
-// {
-//     (byte) 'm',
-//     (byte) 'i',
-//     (byte) 's',
-//     (byte) 's',
-//     (byte) 'i',
-//     (byte) 's',
-//     (byte) 's',
-//     (byte) 'i',
-//     (byte) 'p',
-//     (byte) 'p',
-//     (byte) 'i'
-// };
-// var words = new byte[][]
-// {
-//     new byte[]
-//     {
-//         (byte) 'i',
-//         (byte) 's',
-//         (byte) 's'
-//     },
-//     new byte[]
-//     {
-//         (byte) 'i',
-//         (byte) 's',
-//         (byte) 's',
-//         (byte) 's'
-//     },
-//     new byte[]
-//     {
-//         (byte) 'm',
-//         (byte) 'i',
-//         (byte) 's',
-//         (byte) 's'
-//     },
-//     new byte[]
-//     {
-//         (byte) 's',
-//         (byte) 'i',
-//         (byte) 'p',
-//         (byte) 'p',
-//         (byte) 'i'
-//     }
-// };
-// var sa = new SuffixArray(data);
-// // sa.Print();
-
-// var search = new int[words.Length][];
-// // var search = new int[1][];
-// for (int i = 0; i < search.Length; i++)
-//     search[i] = sa.Search(data, words[i]);
-
-// for (int i = 0; i < search.Length; i++)
-// {
-//     var s = search[i];
-//     string word = "";
-//     foreach (var c in words[i])
-//         word += (char) c;
-
-//     Console.WriteLine($"Searching for word: {word}. Found: {s.Length}");
-
-//     foreach (var pos in s)
-//         Console.WriteLine(pos);
-
-//     Console.WriteLine("-----------------------------------");
-// }

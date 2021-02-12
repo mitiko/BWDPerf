@@ -91,14 +91,14 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     wordRef[i][j] = j;
 
                     var searchResults = this.SA.Search(data: buffer, word: buffer.Slice(j, i + 1));
-                    int lastMatch = int.MinValue;
-                    foreach (var pos in searchResults)
+                    for (int s = 0; s < searchResults.Length; s++)
                     {
-                        if (lastMatch + i + 1 >= pos)
-                        {
-                            wordRef[i][pos] = j;
-                            lastMatch = pos;
-                        }
+                        int pos = searchResults[s];
+                        if (pos <= j) continue;
+                        // First match is always a match
+                        // Otherwise, make sure there's no overlap
+                        if (s == 0) wordRef[i][pos] = j;
+                        else if (searchResults[s-1] + i + 1 >= pos) wordRef[i][pos] = j;
                     }
                 }
             }
