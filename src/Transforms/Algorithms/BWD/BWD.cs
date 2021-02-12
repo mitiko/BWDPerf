@@ -12,6 +12,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
         internal byte[][] Dictionary { get; }
         internal byte[] STokenData { get; set; }
         internal Word SToken { get; set; }
+        internal SuffixArray SA { get; set; }
 
         internal BWD(Options options)
         {
@@ -28,14 +29,18 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             this.STokenData = new byte[0];
             var wordCount = new OccurenceDictionary<Word>();
 
-            // var timer = System.Diagnostics.Stopwatch.StartNew();
-            // var sa = new SuffixArray(buffer);
-            // Console.WriteLine($"Creating the suffix array took: {timer.Elapsed}");
-            FindAllMatchingWords(buffer, ref wordRef); // Initialize words -> O(mb^2)
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            this.SA = new SuffixArray(buffer); // O(b log b)
+            Console.WriteLine($"Creating the Suffix Array took: {timer.Elapsed}");
+            timer.Restart();
+            FindAllMatchingWords(buffer, ref wordRef); // Initialize words -> O(mb log b)
+            Console.WriteLine($"Matching words took: {timer.Elapsed}");
+            Console.WriteLine("Matches all words");
             CountWords(ref wordRef, ref wordCount); // Count the matching words
 
             for (int i = 0; i < this.Dictionary.Length; i++)
             {
+                Console.WriteLine($"Choosing word #{i}");
                 Word word;
                 if (i == this.Dictionary.Length - 1)
                 {
@@ -85,26 +90,15 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     if (wordRef[i][j] != -2) continue;
                     wordRef[i][j] = j;
 
-                    if (i == 0)
+                    var searchResults = this.SA.Search(data: buffer, word: buffer.Slice(j, i + 1));
+                    int lastMatch = int.MinValue;
+                    foreach (var pos in searchResults)
                     {
-                        for (int index = j + 1; index < wordRef[i].Length; index++)
-                            if (buffer.Span[j] == buffer.Span[index]) wordRef[i][index] = j;
-                        continue;
-                    }
-
-                    int l = wordRef[0][j];
-                    // Start search from after this word ends (and word.Length is i+1)
-                    for (int index = j + (i + 1); index < wordRef[i].Length;)
-                    {
-                        if (wordRef[0][index] != l) { index++; continue; } // check if first character matches or don't waste my time and space
-
-                        var selection = buffer.Slice(index, i + 1).Span;
-                        bool match = true;
-                        for (int s = 0; s < selection.Length; s++)
-                            if (buffer.Span[j + s] != selection[s]) { match = false; break; }
-
-                        if (match == true) { wordRef[i][index] = j; index += (i + 1); }
-                        else { index++; }
+                        if (lastMatch + i + 1 >= pos)
+                        {
+                            wordRef[i][pos] = j;
+                            lastMatch = pos;
+                        }
                     }
                 }
             }

@@ -85,6 +85,7 @@ namespace BWDPerf.Tools
                 int mid = (low + high) / 2;
                 for (int i = 0; i < word.Length; i++)
                 {
+                    if (this.SA[mid] + i >= data.Length) { low = mid + 1; break; }
                     var sym = data.Span[this.SA[mid] + i];
                     if (sym == word.Span[i])
                     {
@@ -120,7 +121,7 @@ namespace BWDPerf.Tools
                 if (index < 0) return false;
                 if (index >= this.SA.Length) return false;
                 var pos = this.SA[index];
-                if (pos + 1 >= data.Length) return false;
+                if (pos + word.Length - 1 >= data.Length) return false;
                 for (int i = 0; i < word.Length; i++)
                     if (data.Span[pos + i] != word.Span[i]) return false;
                 return true;
