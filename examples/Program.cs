@@ -6,9 +6,9 @@ using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
 
-var source = new BufferedFileSource("../data/enwik5", 10_000_000);
+var source = new BufferedFileSource("../data/enwik4", 10_000_000);
 var compressedSource = new FileSource("encoded");
-var bwdEncoder = new BWDEncoder(new Options(maxWordSize: 12, indexSize: 8));
+var bwdEncoder = new BWDEncoder(new Options(maxWordSize: 8, indexSize: 7));
 var bwdDecoder = new BWDDecoder();
 var bwdToBytes = new DictionaryToBytes();
 var c_serializer = new SerializeToFile("encoded");
@@ -26,9 +26,41 @@ await encodeTask;
 Console.WriteLine($"Compression took: {timer.Elapsed}");
 timer.Restart();
 
-var decodeTask = compressedSource
-    .ToDecoder(bwdDecoder)
-    .Serialize(d_serializer);
+// var decodeTask = compressedSource
+//     .ToDecoder(bwdDecoder)
+//     .Serialize(d_serializer);
 
-await decodeTask;
-Console.WriteLine($"Decompression took: {timer.Elapsed}");
+// await decodeTask;
+// Console.WriteLine($"Decompression took: {timer.Elapsed}");
+
+// var en = source.Fetch().GetAsyncEnumerator();
+// await en.MoveNextAsync();
+
+// var sa = new BWDPerf.Tools.SuffixArray(en.Current);
+// var word = en.Current.Slice(524, 2);
+// Console.WriteLine("Word:");
+// WriteWord(word);
+// WriteWord(en.Current.Slice(3294, 2));
+// WriteWord(en.Current.Slice(2890, 2));
+// WriteWord(en.Current.Slice(2491, 2));
+// WriteWord(en.Current.Slice(2058, 2));
+// WriteWord(en.Current.Slice(1658, 2));
+// WriteWord(en.Current.Slice(1307, 2));
+// WriteWord(en.Current.Slice(524, 2));
+// WriteWord(en.Current.Slice(9997, 2));
+// WriteWord(en.Current.Slice(2551, 2));
+// Console.WriteLine("Suffix array found matches at: ");
+// foreach (var match in sa.Search(en.Current, word))
+// {
+//     Console.WriteLine(match);
+// }
+
+// void WriteWord(ReadOnlyMemory<byte> word)
+// {
+//     Console.Write("\"");
+//     for (int i = 0; i < word.Length; i++)
+//     {
+//         Console.Write((char) word.Span[i]);
+//     }
+//     Console.WriteLine("\"");
+// }

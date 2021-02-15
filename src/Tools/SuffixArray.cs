@@ -78,9 +78,9 @@ namespace BWDPerf.Tools
             // Binary search on the sorted suffix array takes O(m log n) worst case for word size m
             // FM-index stores BWT and can search in O(m) with a constant rank function using a wavelet tree
             int low = 0;
-            int high = data.Length;
+            int high = data.Length - 1;
             int match = -1;
-            while (low < high)
+            while (low <= high)
             {
                 int mid = (low + high) / 2;
                 for (int i = 0; i < word.Length; i++)
@@ -97,7 +97,7 @@ namespace BWDPerf.Tools
                     if (word.Span[i] > sym)
                         low = mid + 1;
                     if (word.Span[i] < sym)
-                        high = mid;
+                        high = mid - 1;
                     break;
                 }
                 if (match != -1)
@@ -114,7 +114,9 @@ namespace BWDPerf.Tools
             while (IsMatch(last))
                 last++;
 
-            return this.SA[first..last];
+            var result = this.SA[first..last];
+            Array.Sort(result);
+            return result;
 
             bool IsMatch(int index)
             {

@@ -75,7 +75,36 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
         internal void FindAllMatchingWords(ReadOnlyMemory<byte> buffer, ref int[][] wordRef)
         {
+            var wx = new int[wordRef.Length][];
             // Initialize the matrix
+            for (int i = 0; i < wx.Length; i++)
+            {
+                wx[i] = new int[buffer.Length - i];
+                for (int j = 0; j < wx[i].Length; j++)
+                    wx[i][j] = -2;
+            }
+
+            for (int i = 0; i < wx.Length; i++)
+            {
+                for (int j = 0; j < wx[i].Length; j++)
+                {
+                    if (wx[i][j] != -2) continue;
+                    wx[i][j] = j;
+
+                    var searchResults = this.SA.Search(data: buffer, word: buffer.Slice(j, i + 1));
+                    int lastMatch = j;
+                    for (int s = 0; s < searchResults.Length; s++)
+                    {
+                        int pos = searchResults[s];
+                        if (pos >= lastMatch + i + 1)
+                        {
+                            wx[i][pos] = j;
+                            lastMatch = pos;
+                        }
+                    }
+                }
+            }
+
             for (int i = 0; i < wordRef.Length; i++)
             {
                 wordRef[i] = new int[buffer.Length - i];
@@ -90,15 +119,39 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     if (wordRef[i][j] != -2) continue;
                     wordRef[i][j] = j;
 
-                    var searchResults = this.SA.Search(data: buffer, word: buffer.Slice(j, i + 1));
-                    for (int s = 0; s < searchResults.Length; s++)
+                    if (i == 0)
                     {
-                        int pos = searchResults[s];
-                        if (pos <= j) continue;
-                        // First match is always a match
-                        // Otherwise, make sure there's no overlap
-                        if (s == 0) wordRef[i][pos] = j;
-                        else if (searchResults[s-1] + i + 1 >= pos) wordRef[i][pos] = j;
+                        for (int index = j + 1; index < wordRef[i].Length; index++)
+                            if (buffer.Span[j] == buffer.Span[index]) wordRef[i][index] = j;
+                        continue;
+                    }
+
+                    int l = wordRef[0][j];
+                    // Start search from after this word ends (and word.Length is i+1)
+                    for (int index = j + (i + 1); index < wordRef[i].Length;)
+                    {
+                        if (wordRef[0][index] != l) { index++; continue; } // check if first character matches or don't waste my time and space
+
+                        var selection = buffer.Slice(index, i + 1).Span;
+                        bool match = true;
+                        for (int s = 0; s < selection.Length; s++)
+                            if (buffer.Span[j + s] != selection[s]) { match = false; break; }
+
+                        if (match == true) { wordRef[i][index] = j; index += (i + 1); }
+                        else { index++; }
+                    }
+                }
+            }
+
+
+
+            for (int i = 0; i < 2; i++)
+            {
+                for (int j = 0; j < wordRef[i].Length; j++)
+                {
+                    if (wordRef[i][j] != wx[i][j])
+                    {
+                        Console.WriteLine($"Conflict at [{i},{j}] -- wordRef: {wordRef[i][j]}; SA: {wx[i][j]}");
                     }
                 }
             }
@@ -111,6 +164,10 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             {
                 for (int j = 0; j < wordRef[i].Length; j++)
                 {
+                    if (wordRef[i][j] == -2)
+                    {
+                        Console.WriteLine("Problemmm!!!");
+                    }
                     if (wordRef[i][j] != -1)
                         wordCount.Add(new Word(wordRef[i][j], i + 1));
                 }
