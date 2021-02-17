@@ -13,29 +13,32 @@ namespace BWDPerf.Tools
             // Prefix doubling - taking O(n log n) time
             // An optimization can be done to calculate a partial suffix array in O(n log m) where m is the biggest string we'll be searching by
             int n = data.Length;
+            int nn = n + 1;
             var s = data.Span;
             const int alphabet = 256;
-            var p = new int[n]; // Backwards sorted positions of equivalence
-            var c = new int[n]; // Equivalence classes
-            var cnt = new int[Math.Max(n, alphabet)];
+            var p = new int[nn]; // Backwards sorted positions of equivalence
+            var c = new int[nn]; // Equivalence classes
+            var cnt = new int[Math.Max(n, alphabet)+1];
 
             // Sort the substrings of length 1 using count sort
             // Count the occurences
+            cnt[0] = 1;
             for (int i = 0; i < n; i++)
-                cnt[s[i]]++;
+                cnt[s[i]+1]++;
             // Change the array to contain the ending positions in the sorted array
-            for (int i = 1; i < alphabet; i++)
+            for (int i = 1; i <= alphabet; i++)
                 cnt[i] += cnt[i-1];
-            // Save sorted indices of elements in reverse order
+            // Save sorted indices of elements in reverse order (because suffixes starting further in the back are shorter)
+            p[--cnt[0]] = n;
             for (int i = 0; i < n; i++)
-                p[--cnt[s[i]]] = i;
+                p[--cnt[s[i]+1]] = i;
             // Store the equivalence class of each element
             c[p[0]] = 0;
             int classes = 1;
-            for (int i = 1; i < n; i++)
+            for (int i = 1; i < nn; i++)
             {
-                if (s[p[i]] != s[p[i-1]])
-                    classes++;
+                if (p[i-1] != n) { if (s[p[i]] != s[p[i-1]]) classes++; }
+                else classes++;
                 c[p[i]] = classes - 1;
             }
             // We don't really need the sorted characters, the equivalence classes will give us more information forward
@@ -43,36 +46,36 @@ namespace BWDPerf.Tools
 
             // Sort the suffixes of lengths 2, 4, 8, 16, 32... by using the information of the already sorted halves
             // Same as the positions and equivalence classes but for the next iteration
-            var pn = new int[n];
-            var cn = new int[n];
-            for (int h = 0; (1 << h) < n; ++h)
+            var pn = new int[nn];
+            var cn = new int[nn];
+            for (int h = 0; (1 << h) < nn; ++h)
             {
                 // Calculate the positions array
-                for (int i = 0; i < n; i++)
+                for (int i = 0; i < nn; i++)
                 {
                     // The position of the second half of the i-th substring is i - 2^(k-1)
                     pn[i] = p[i] - (1 << h);
                     if (pn[i] < 0)
-                        pn[i] += n;
+                        pn[i] += nn; // this is where wrap around happens
                 }
                 // Reset count
-                for (int i = 0; i < classes; i++)
+                for (int i = 0; i < cnt.Length; i++)
                     cnt[i] = 0;
                 // Count the classes
-                for (int i = 0; i < n; i++)
+                for (int i = 0; i < nn; i++)
                     cnt[c[pn[i]]]++;
                 // Calculate the ending postions in the sorted array
                 for (int i = 1; i < classes; i++)
                     cnt[i] += cnt[i-1];
                 // Calculate the positions
-                for (int i = n-1; i >= 0; i--)
+                for (int i = nn-1; i >= 0; i--)
                     p[--cnt[c[pn[i]]]] = pn[i];
                 cn[p[0]] = 0;
                 classes = 1;
-                for (int i = 1; i < n; i++) {
+                for (int i = 1; i < nn; i++) {
                     // Check if the substrings are of the same class by checking both halves
-                    var cur = (c[p[i]], c[(p[i] + (1 << h)) % n]);
-                    var prev = (c[p[i-1]], c[(p[i-1] + (1 << h)) % n]);
+                    var cur = (c[p[i]], c[(p[i] + (1 << h)) % nn]);
+                    var prev = (c[p[i-1]], c[(p[i-1] + (1 << h)) % nn]);
                     if (cur != prev)
                         ++classes;
                     cn[p[i]] = classes - 1;
@@ -81,14 +84,23 @@ namespace BWDPerf.Tools
                 c = cn;
             }
 
-            this.SA = p;
+            this.SA = p[1..];
         }
 
-        public void Print()
+        public void Print(ReadOnlyMemory<byte> data)
         {
             Console.WriteLine("Suffix array:");
             foreach (var x in this.SA)
-                Console.WriteLine(x);
+                Console.WriteLine($"{x.ToString("00")} -- {GW(x)}");
+            string GW(int index)
+            {
+                var word = data.Slice(index, this.SA.Length - index);
+                var str = "\"";
+                foreach (var sym in word.Span)
+                    str += (char) sym;
+                str += "\"";
+                return str;
+            }
         }
 
         public int[] Search(ReadOnlyMemory<byte> data, ReadOnlyMemory<byte> word)
@@ -101,6 +113,7 @@ namespace BWDPerf.Tools
             while (low <= high)
             {
                 int mid = (low + high) / 2;
+                // Console.WriteLine($"Checking - low: {low}; high: {high}; mid: {mid}; word: {GW(mid)}");
                 for (int i = 0; i < word.Length; i++)
                 {
                     if (this.SA[mid] + i >= data.Length) { low = mid + 1; break; }
@@ -123,7 +136,25 @@ namespace BWDPerf.Tools
             }
 
             if (match == -1)
+            {
+                // for (int i = low - 10; i < low + 10 && i >= 0 && i < this.SA.Length; i++)
+                // {
+                //     var c = Console.ForegroundColor;
+                //     if (i == low) Console.ForegroundColor = ConsoleColor.Red;
+                //     Console.WriteLine($"SA[{i}]: {SA[i]} -- {GW(i)}");
+                //     if (i == low) Console.ForegroundColor = c;
+                // }
                 return new int[0];
+            }
+            string GW(int index)
+            {
+                var word = data.Slice(this.SA[index], Math.Min(8, this.SA.Length - 1));
+                var str = "\"";
+                foreach (var sym in word.Span)
+                    str += (char) sym;
+                str += "\"";
+                return str;
+            }
 
             int first = match; // First match inclusive
             int last = match;  // Last  match exclusive
@@ -134,19 +165,14 @@ namespace BWDPerf.Tools
 
             var result = this.SA[first..last];
             Array.Sort(result);
-            // Remove the last few positions which actually terminate before a whole word is matched because of the cyclic shifting
-            last = result.Length;
-            for (int i = result.Length - 1; i >= 0 ; i--)
-                if (result[i] + word.Length - 1 >= data.Length) last--;
-            return result[..last];
+            return result;
 
             bool IsMatch(int index)
             {
                 if (index < 0) return false;
                 if (index >= this.SA.Length) return false;
                 var pos = this.SA[index];
-                // This is actually not a match but we'll pretend it is and remove it from the result later
-                if (pos + word.Length - 1 >= data.Length) return true;
+                if (pos + word.Length - 1 >= data.Length) return false;
                 for (int i = 0; i < word.Length; i++)
                     if (data.Span[pos + i] != word.Span[i]) return false;
                 return true;

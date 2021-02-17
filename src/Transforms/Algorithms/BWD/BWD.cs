@@ -143,15 +143,14 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 }
             }
 
-
-
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < wordRef.Length; i++)
             {
                 for (int j = 0; j < wordRef[i].Length; j++)
                 {
                     if (wordRef[i][j] != wx[i][j])
                     {
                         Console.WriteLine($"Conflict at [{i},{j}] -- wordRef: {wordRef[i][j]}; SA: {wx[i][j]}");
+                        throw new Exception("There is a mismatch!" + $"  Conflict at [{i},{j}] -- wordRef: {wordRef[i][j]}; SA: {wx[i][j]}");
                     }
                 }
             }
