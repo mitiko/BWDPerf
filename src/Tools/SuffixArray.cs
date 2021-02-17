@@ -70,9 +70,11 @@ namespace BWDPerf.Tools
                 // Calculate the positions
                 for (int i = nn-1; i >= 0; i--)
                     p[--cnt[c[pn[i]]]] = pn[i];
+
                 cn[p[0]] = 0;
                 classes = 1;
-                for (int i = 1; i < nn; i++) {
+                for (int i = 1; i < nn; i++)
+                {
                     // Check if the substrings are of the same class by checking both halves
                     var cur = (c[p[i]], c[(p[i] + (1 << h)) % nn]);
                     var prev = (c[p[i-1]], c[(p[i-1] + (1 << h)) % nn]);
@@ -81,7 +83,8 @@ namespace BWDPerf.Tools
                     cn[p[i]] = classes - 1;
                 }
                 // Update the classes
-                c = cn;
+                for (int i = 0; i < nn; i++)
+                    c[i] = cn[i];
             }
 
             this.SA = p[1..];
@@ -91,8 +94,8 @@ namespace BWDPerf.Tools
         {
             Console.WriteLine("Suffix array:");
             foreach (var x in this.SA)
-                Console.WriteLine($"{x.ToString("00")} -- {GW(x)}");
-            string GW(int index)
+                Console.WriteLine($"{x.ToString("00")} -- {GetWord(x)}");
+            string GetWord(int index)
             {
                 var word = data.Slice(index, this.SA.Length - index);
                 var str = "\"";
@@ -113,7 +116,6 @@ namespace BWDPerf.Tools
             while (low <= high)
             {
                 int mid = (low + high) / 2;
-                // Console.WriteLine($"Checking - low: {low}; high: {high}; mid: {mid}; word: {GW(mid)}");
                 for (int i = 0; i < word.Length; i++)
                 {
                     if (this.SA[mid] + i >= data.Length) { low = mid + 1; break; }
@@ -136,25 +138,7 @@ namespace BWDPerf.Tools
             }
 
             if (match == -1)
-            {
-                // for (int i = low - 10; i < low + 10 && i >= 0 && i < this.SA.Length; i++)
-                // {
-                //     var c = Console.ForegroundColor;
-                //     if (i == low) Console.ForegroundColor = ConsoleColor.Red;
-                //     Console.WriteLine($"SA[{i}]: {SA[i]} -- {GW(i)}");
-                //     if (i == low) Console.ForegroundColor = c;
-                // }
                 return new int[0];
-            }
-            string GW(int index)
-            {
-                var word = data.Slice(this.SA[index], Math.Min(8, this.SA.Length - 1));
-                var str = "\"";
-                foreach (var sym in word.Span)
-                    str += (char) sym;
-                str += "\"";
-                return str;
-            }
 
             int first = match; // First match inclusive
             int last = match;  // Last  match exclusive
