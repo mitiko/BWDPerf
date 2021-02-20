@@ -36,7 +36,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     while (bits.Count >= bitsPerWord)
                     {
                         // We'll read 1 word, by looking up the index in the dictionary
-                        int index = ReadFromBitQueue(bits, bitsPerWord); i++;
+                        int index = ReadFromBitQueue(ref bits, bitsPerWord); i++;
 
                         if (index == stokenIndex)
                         {
@@ -45,7 +45,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                         }
                         else yield return dictionary[index];
 
-                        if (i > streamLength) break;
+                        if (i >= streamLength) break;
                     }
 
                     if (i >= streamLength) break;
@@ -56,13 +56,10 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     // Don't care about the bits we're discarding
                 }
             }
-
         }
 
         private async Task<byte[][]> CopyDictionary(IAsyncEnumerator<byte> enumerator, int dictionarySize, int stokenIndex)
         {
-            await GetNextByte(enumerator); // read r
-            var r = enumerator.Current;
             byte[][] dictionary = new byte[dictionarySize][];
             var int32Arr = new byte[4];
             for (int i = 0; i < dictionary.Length; i++)
@@ -70,7 +67,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 await GetNextByte(enumerator);
                 int count = enumerator.Current;
                 // if the options used were for a bigger dictionary but we couldn't fill it, the stoken is actually at another index
-                if (i == stokenIndex && (1 << r) - 1 == stokenIndex)
+                if (i == stokenIndex)
                 {
                     // This is an SToken. Read a count as int32 not as a byte
                     for (int k = 0; k < 4; k++)
@@ -119,7 +116,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             return BitConverter.ToInt32(int32Arr, 0);
         }
 
-        private int ReadFromBitQueue(Queue<bool> bits, int bitsPerWord)
+        private int ReadFromBitQueue(ref Queue<bool> bits, int bitsPerWord)
         {
             int n = 0;
             for (int j = 0; j < bitsPerWord; j++)
