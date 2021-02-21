@@ -12,7 +12,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace BWDPerf.Tests
 {
     [TestClass]
-    public class BWDStandalone
+    public class BWDStandaloneTests
     {
         private const string _enwik4 = "../../../../data/enwik4";
         private const string _compressedFile = "../../../enwik4.bwd";
