@@ -1,29 +1,28 @@
 using System;
 using System.Collections.Generic;
-using BWDPerf.Transforms.Entities;
 using BWDPerf.Interfaces;
+using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Tools
 {
-    public class DictionaryToBytes : ICoder<(ReadOnlyMemory<byte>, ReadOnlyMemory<DictionaryIndex>), ReadOnlyMemory<byte>>
+    public class DictionaryToBytes : ICoder<BWDBlock, ReadOnlyMemory<byte>>
     {
-        public async IAsyncEnumerable<ReadOnlyMemory<byte>> Encode(IAsyncEnumerable<(ReadOnlyMemory<byte>, ReadOnlyMemory<DictionaryIndex>)> input)
+        public async IAsyncEnumerable<ReadOnlyMemory<byte>> Encode(IAsyncEnumerable<BWDBlock> input)
         {
-            await foreach (var (dictionary, stream) in input)
+            await foreach (var block in input)
             {
                 // Write out the dictionary
-                yield return dictionary;
-                var dictionarySize = BitConverter.ToInt32(dictionary.Slice(0, 4).Span);
-                var bitsPerWord = Convert.ToInt32(Math.Ceiling(Math.Log2(dictionarySize)));
+                yield return block.Dictionary.Serialize();
+                var bitsPerWord = Convert.ToInt32(Math.Ceiling(Math.Log2(block.Dictionary.WordCount)));
 
                 var bytes = new List<byte>();
-                bytes.AddRange(BitConverter.GetBytes(stream.Length));
+                bytes.AddRange(BitConverter.GetBytes(block.Stream.Length));
                 var bits = new Queue<bool>();
-                for (int k = 0; k < stream.Length; k++)
+                for (int k = 0; k < block.Stream.Length; k++)
                 {
                     // Write bits of the current index to the queue
                     for (int i = bitsPerWord - 1; i >= 0; i--)
-                        bits.Enqueue((stream.Span[k].Index & (1 << i)) != 0);
+                        bits.Enqueue((block.Stream[k] & (1 << i)) != 0);
 
                     // Flush out buffered bytes if any
                     while (bits.Count >= 8) bytes.Add(ReadFromBitQueue());

@@ -2,63 +2,51 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BWDPerf.Tools;
-using BWDPerf.Transforms.Entities;
+using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD
 {
     internal class BWD
     {
         internal Options Options { get; }
-        internal byte[][] Dictionary { get; }
-        internal byte[] STokenData { get; set; }
-        internal Word SToken { get; set; }
         internal SuffixArray SA { get; set; }
 
-        internal BWD(Options options)
-        {
-            this.Options = options;
-            this.Dictionary = new byte[1 << options.IndexSize][]; // len(dict) = 2^m
-            this.STokenData = new byte[0];
-            this.SToken = new Word(-1, 0);
-        }
+        internal BWD(Options options) => this.Options = options;
 
-        internal int CalculateDictionary(ReadOnlyMemory<byte> buffer)
+        internal BWDictionary CalculateDictionary(ReadOnlyMemory<byte> buffer)
         {
-            int dictionarySize = 0;
+            var dictionary = new BWDictionary(this.Options.IndexSize);
             int[][] wordRef = new int[this.Options.MaxWordSize][];
-            this.STokenData = new byte[0];
             var wordCount = new OccurenceDictionary<Word>();
 
             this.SA = new SuffixArray(buffer); // O(b log b)
             FindAllMatchingWords(buffer, ref wordRef); // Initialize words -> O(mb log b)
-            this.SA = null;
+            this.SA = null; // Deallocate the suffix array, since we're not using it anymore
             CountWords(ref wordRef, ref wordCount); // Count the matching words
 
-            for (int i = 0; i < this.Dictionary.Length; i++)
+            for (int i = 0; i < dictionary.Length; i++)
             {
                 Word word;
-                if (i == this.Dictionary.Length - 1)
+                if (i == dictionary.STokenIndex)
                 {
                     // The last word in the dictionary is always an <s> token
                     // If the words in the dictionary cover the whole buffer, there might not be an <s> token
-                    CollectSTokenData(buffer, ref wordRef);
-                    this.Dictionary[i] = this.STokenData;
-                    dictionarySize = i + 1;
+                    dictionary[i] = CollectSTokenData(buffer, ref wordRef, dictionary);
                     break;
                 }
 
                 word = GetHighestRankedWord(ref wordCount);
                 // Save the word to the dictionary
-                this.Dictionary[i] = buffer.Slice(word.Location, word.Length).ToArray();
+                dictionary[i] = buffer.Slice(word.Location, word.Length).ToArray();
                 SplitByWord(buffer, word, ref wordRef, ref wordCount);
                 CountWords(ref wordRef, ref wordCount);
 
                 // When all references have been encoded, save the dictionary size and exit
                 if (wordCount.Values.Sum() == 0) // TODO: can this be just .count
-                { dictionarySize = i + 1; break; }
+                    break;
             }
 
-            return dictionarySize;
+            return dictionary;
         }
 
         internal double Rank(Word word, ref OccurenceDictionary<Word> wordCount)
@@ -108,9 +96,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 for (int j = 0; j < wordRef[i].Length; j++)
                 {
                     if (wordRef[i][j] == -2)
-                    {
-                        Console.WriteLine("Problemmm!!!");
-                    }
+                        throw new Exception("The matching hasn't covered all the words");
+
                     if (wordRef[i][j] != -1)
                         wordCount.Add(new Word(wordRef[i][j], i + 1));
                 }
@@ -161,27 +148,28 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             }
         }
 
-        internal void CollectSTokenData(ReadOnlyMemory<byte> buffer, ref int[][] wordRef)
+        internal byte[] CollectSTokenData(ReadOnlyMemory<byte> buffer, ref int[][] wordRef, BWDictionary dictionary)
         {
             var list = new List<byte>();
             // This is the same parsing code as in encode dictionary.
             // TODO: Extract parsing code in a new method
+            // Or we can also use the wordRef / bitvector to see which places remain uncovered and collect the stoken like that
             var data = new int[buffer.Length];
-            var stoken = new DictionaryIndex(this.Dictionary.Length - 1);
+            var stoken = dictionary.STokenIndex;
             for (int k = 0; k < data.Length; k++)
-                data[k] = this.Dictionary.Length - 1;
+                data[k] = stoken;
 
-            for (int i = 0; i < this.Dictionary.Length - 1; i++)
+            for (int i = 0; i < dictionary.WordCount; i++)
             {
-                var word = this.Dictionary[i];
+                var word = dictionary[i];
                 for (int j = 0; j < buffer.Length; j++)
                 {
                     // check if location is used
-                    if (data[j] != stoken.Index) continue;
+                    if (data[j] != stoken) continue;
                     if (j + word.Length - 1 >= buffer.Length) break; // can't fit word
                     var match = true;
                     for (int s = 0; s < word.Length; s++)
-                        if (buffer.Span[j + s] != word[s] || data[j+s] != stoken.Index) { match = false; break; }
+                        if (buffer.Span[j + s] != word.Span[s] || data[j+s] != stoken) { match = false; break; }
 
                     if (match == true)
                     {
@@ -194,7 +182,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             for (int k = 0; k < data.Length; k++)
             {
                 bool readStoken = false;
-                while (data[k] == stoken.Index)
+                while (data[k] == stoken)
                 {
                     if (!readStoken) readStoken = true;
                     list.Add(buffer.Span[k]);
@@ -205,7 +193,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 if (readStoken)
                     list.Add(0xff);
             }
-            this.STokenData = list.ToArray();
+            return list.ToArray();
         }
     }
 }

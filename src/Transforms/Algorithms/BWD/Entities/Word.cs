@@ -1,4 +1,4 @@
-namespace BWDPerf.Transforms.Entities
+namespace BWDPerf.Transforms.Algorithms.BWD.Entities
 {
     // Represents a word reference in a buffer, using first occurence location and length
     public struct Word
