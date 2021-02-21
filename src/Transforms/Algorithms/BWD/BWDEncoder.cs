@@ -87,29 +87,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 k += offset;
             }
 
-            // int a = 0;
-            // foreach (var word in stream)
-            // {
-            //     var str = "";
-            //     if (word.Index == stoken.Index)
-            //     {
-            //         str = "<s>";
-            //     }
-            //     else
-            //     {
-            //         foreach (var s in this.BWD.Dictionary[word.Index])
-            //         {
-            //             if (s == (byte) '\n')
-            //                 str += (char) s;
-            //             else
-            //                 str += (char) s;
-            //         }
-            //         str = $"\"{str}\"";
-            //     }
-            //     Console.WriteLine($"{a} -- {word.Index} -- {str}");
-            //     a++;
-            // }
-
             return stream.ToArray();
         }
     }

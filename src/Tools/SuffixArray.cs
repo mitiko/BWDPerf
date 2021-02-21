@@ -88,6 +88,9 @@ namespace BWDPerf.Tools
             }
 
             this.SA = p[1..];
+            c = null;
+            pn = null;
+            cn = null;
         }
 
         public void Print(ReadOnlyMemory<byte> data)

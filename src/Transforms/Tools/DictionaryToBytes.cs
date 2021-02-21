@@ -18,7 +18,6 @@ namespace BWDPerf.Transforms.Tools
 
                 var bytes = new List<byte>();
                 bytes.AddRange(BitConverter.GetBytes(stream.Length));
-                Console.WriteLine($"Stream size is {stream.Length} and dict size is {dictionarySize}");
                 var bits = new Queue<bool>();
                 for (int k = 0; k < stream.Length; k++)
                 {

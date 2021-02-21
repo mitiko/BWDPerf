@@ -29,13 +29,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             this.STokenData = new byte[0];
             var wordCount = new OccurenceDictionary<Word>();
 
-            var timer = System.Diagnostics.Stopwatch.StartNew();
             this.SA = new SuffixArray(buffer); // O(b log b)
-            Console.WriteLine($"Creating the Suffix Array took: {timer.Elapsed}");
-            timer.Restart();
             FindAllMatchingWords(buffer, ref wordRef); // Initialize words -> O(mb log b)
-            Console.WriteLine($"Matching words took: {timer.Elapsed}");
-            Console.WriteLine("Matches all words");
+            this.SA = null;
             CountWords(ref wordRef, ref wordCount); // Count the matching words
 
             for (int i = 0; i < this.Dictionary.Length; i++)
