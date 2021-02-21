@@ -38,13 +38,14 @@ namespace BWDPerf.Tests
         {
             var compressTask = new BufferedFileSource(_enwik4, bufferSize)
                 .ToCoder(new BWDEncoder(options))
-                .ToCoder(new DictionaryToBytes())
+                .ToCoder(new BlockToBytes())
                 .Serialize(new SerializeToFile(_compressedFile));
 
             await compressTask;
 
             var decompressTask = new FileSource(_compressedFile)
-                .ToDecoder(new BWDDecoder())
+                .ToDecoder(new BWDRawDecoder())
+                .ToDecoder(new BlockToBytes())
                 .Serialize(new SerializeToFile(_decompressedFile));
 
             await decompressTask;

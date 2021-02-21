@@ -28,7 +28,7 @@ public class BWDBenchmark
     {
         var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/enwik6", 1_000_000)
             .ToCoder(new BWDEncoder(new Options(maxWordSize: 16, indexSize: 8)))
-            .ToCoder(new DictionaryToBytes())
+            .ToCoder(new BlockToBytes())
             .Serialize(new SerializeToFile("encoded"));
 
         await encodeTask;
@@ -38,7 +38,8 @@ public class BWDBenchmark
     public async Task Decompress()
     {
         var decodeTask = new FileSource("encoded")
-            .ToDecoder(new BWDDecoder())
+            .ToDecoder(new BWDRawDecoder())
+            .ToDecoder(new BlockToBytes())
             .Serialize(new SerializeToFile("decoded"));
 
         await decodeTask;

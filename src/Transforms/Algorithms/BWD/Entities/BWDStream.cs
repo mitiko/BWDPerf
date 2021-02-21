@@ -9,6 +9,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
         public int Length => this.Stream.Length;
         public int this[int index] => this.Stream.Span[index];
 
+        public BWDStream(ReadOnlyMemory<int> stream) =>
+            this.Stream = stream;
+
         public BWDStream(ReadOnlyMemory<byte> buffer, BWDictionary dictionary)
         {
             // TODO: Use the FM-index to do parsing in O(n)

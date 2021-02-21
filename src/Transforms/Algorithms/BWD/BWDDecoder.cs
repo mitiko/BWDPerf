@@ -2,114 +2,70 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using BWDPerf.Interfaces;
+using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD
 {
-    public class BWDDecoder : IDecoder<byte, ReadOnlyMemory<byte>>
+    public class BWDRawDecoder : IDecoder<byte, BWDBlock>
     {
-        public async IAsyncEnumerable<ReadOnlyMemory<byte>> Decode(IAsyncEnumerable<byte> input)
+        public async IAsyncEnumerable<BWDBlock> Decode(IAsyncEnumerable<byte> input)
         {
             var enumerator = input.GetAsyncEnumerator();
             while (true)
             {
-                var (dictionarySize, endOfStream) = await ReadDictionarySize(enumerator);
+                var dictionarySize = await ReadInteger(enumerator);
+                if (dictionarySize == null) break; // We've reached end of stream
 
-                if (endOfStream == true) break;
-                var bitsPerWord = Convert.ToInt32(Math.Ceiling(Math.Log2(dictionarySize))); // bits per token
-                int stokenIndex = (1 << bitsPerWord) - 1;
+                var dictionary = await ReadDictionary(enumerator, (int) dictionarySize);
+                int streamLength = (int) await ReadInteger(enumerator);
 
-                var dictionary = await CopyDictionary(enumerator, dictionarySize, stokenIndex);
-
-                int streamLength = await ReadStreamLength(enumerator);
-                var stream = new List<byte>();
+                var stream = new List<int>(capacity: streamLength);
                 var bits = new Queue<bool>();
-                int stokenStartIndex = 0;
 
                 // Read from stream
-                for (int i = 0; i < streamLength;)
+                for (int symbolsRead = 0; symbolsRead < streamLength;)
                 {
                     // Read from bit queue
-                    while (bits.Count >= bitsPerWord)
+                    while (bits.Count >= dictionary.IndexSize && symbolsRead < streamLength)
                     {
-                        // We'll read 1 word, by looking up the index in the dictionary
-                        int index = ReadFromBitQueue(ref bits, bitsPerWord); i++;
-
-                        if (index == stokenIndex)
-                        {
-                            var data = ReadFromSToken(stokenIndex, ref stokenStartIndex, ref dictionary);
-                            yield return data.ToArray();
-                        }
-                        else yield return dictionary[index];
-
-                        if (i >= streamLength) break;
+                        int index = ReadFromBitQueue(ref bits, dictionary.IndexSize);
+                        stream.Add(index);
+                        symbolsRead++;
                     }
 
-                    if (i >= streamLength) break;
+                    if (symbolsRead >= streamLength) break;
                     // Write to bit queue
-                    await GetNextByte(enumerator);
+                    var nextByte = await GetNextByte(enumerator);
                     for (int j = 7; j >= 0; j--)
-                        bits.Enqueue((enumerator.Current & (1 << j)) != 0);
-                    // Don't care about the bits we're discarding
+                        bits.Enqueue((nextByte & (1 << j)) != 0);
+                    // Don't care about the bits we're discarding, they were padding
+                    // TODO: Try replace bit queues with an integer
                 }
+
+                // TODO: Fix everywhere we use arrays but can deal without
+                yield return new BWDBlock(dictionary, new BWDStream(stream.ToArray()));
             }
         }
 
-        private async Task<byte[][]> CopyDictionary(IAsyncEnumerator<byte> enumerator, int dictionarySize, int stokenIndex)
+        private async Task<BWDictionary> ReadDictionary(IAsyncEnumerator<byte> enumerator, int dictionarySize)
         {
-            byte[][] dictionary = new byte[dictionarySize][];
-            var int32Arr = new byte[4];
+            var indexSize = Convert.ToInt32(Math.Ceiling(Math.Log2(dictionarySize)));
+            var dictionary = new BWDictionary(indexSize);
+
             for (int i = 0; i < dictionary.Length; i++)
             {
-                await GetNextByte(enumerator);
-                int count = enumerator.Current;
-                // if the options used were for a bigger dictionary but we couldn't fill it, the stoken is actually at another index
-                if (i == stokenIndex)
-                {
-                    // This is an SToken. Read a count as int32 not as a byte
-                    for (int k = 0; k < 4; k++)
-                    {
-                        int32Arr[k] = enumerator.Current;
-                        if (k == 3) break; // Make sure we don't read 5 bytes, bc the stream count will be unaligned and too big
-                        await GetNextByte(enumerator);
-                    }
-                    count = BitConverter.ToInt32(int32Arr, 0);
-                }
-                dictionary[i] = new byte[count];
-                for (int j = 0; j < count; j++)
-                {
-                    await GetNextByte(enumerator);
-                    dictionary[i][j] = enumerator.Current;
-                }
+                int length = 0;
+                if (i == dictionary.STokenIndex)
+                    length = (int) await ReadInteger(enumerator);
+                else
+                    length = await GetNextByte(enumerator);
+                var word = new byte[length];
+                Console.WriteLine($"Reading word length to be {length} and index is {i}");
+                for (int j = 0; j < word.Length; j++)
+                    word[j] = await GetNextByte(enumerator);
+                dictionary[i] = word;
             }
             return dictionary;
-        }
-
-        private async Task<(int dictionarySize, bool endOfStream)> ReadDictionarySize(IAsyncEnumerator<byte> enumerator)
-        {
-            var endOfStream = false;
-            var int32Arr = new byte[4];
-            for (int k = 0; k < 4; k++)
-            {
-                try { await GetNextByte(enumerator); }
-                catch (Exception)
-                {
-                    if (k == 0) { endOfStream = true; break; }
-                    else throw;
-                }
-                int32Arr[k] = enumerator.Current;
-            }
-            return (BitConverter.ToInt32(int32Arr, 0), endOfStream);
-        }
-
-        private async Task<int> ReadStreamLength(IAsyncEnumerator<byte> enumerator)
-        {
-            var int32Arr = new byte[4];
-            for (int k = 0; k < 4; k++)
-            {
-                await GetNextByte(enumerator);
-                int32Arr[k] = enumerator.Current;
-            }
-            return BitConverter.ToInt32(int32Arr, 0);
         }
 
         private int ReadFromBitQueue(ref Queue<bool> bits, int bitsPerWord)
@@ -124,29 +80,25 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             return n;
         }
 
-        private List<byte> ReadFromSToken(int stokenIndex, ref int stokenStartIndex, ref byte[][] dictionary)
+        private async Task<int?> ReadInteger(IAsyncEnumerator<byte> enumerator)
         {
-            var data = new List<byte>();
-            // This is an SToken. Only read from SToken to stream until escape char.
-            for (int j = stokenStartIndex; j < dictionary[stokenIndex].Length; j++)
+            var int32Arr = new byte[4];
+            for (int k = 0; k < 4; k++)
             {
-                if (dictionary[stokenIndex][j] == 0xff)
+                try { int32Arr[k] = await GetNextByte(enumerator); }
+                catch
                 {
-                    if (j + 1 >= dictionary[stokenIndex].Length) break;
-
-                    if (dictionary[stokenIndex][j + 1] == 0xff)
-                        { data.Add(0xff); j++; }
-                    else
-                        { stokenStartIndex = j + 1; break; }
+                    if (k == 0) return null;
+                    else throw;
                 }
-                else data.Add(dictionary[stokenIndex][j]);
             }
-            return data;
+            return BitConverter.ToInt32(int32Arr);
         }
 
-        private async Task GetNextByte(IAsyncEnumerator<byte> enumerator)
+        private async Task<byte> GetNextByte(IAsyncEnumerator<byte> enumerator)
         {
             if (! await enumerator.MoveNextAsync()) throw new Exception("Problem decoding");
+            return enumerator.Current;
         }
     }
 }

@@ -5,20 +5,22 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
 {
     public class BWDictionary
     {
-        public ReadOnlyMemory<byte>[] Dictionary { get; }
+        private ReadOnlyMemory<byte>[] Dictionary { get; }
+        public int IndexSize { get; }
         public int Length => this.Dictionary.Length;
         public int STokenIndex => this.Dictionary.Length - 1;
+        public ReadOnlyMemory<byte> SToken => this.Dictionary[this.STokenIndex];
         private bool wordCountChanged = true;
         private int wordCount = 0;
         public ReadOnlyMemory<byte> this[int index]
         {
             get
             {
-                wordCountChanged = true;
                 return this.Dictionary[index];
             }
             set
             {
+                wordCountChanged = true;
                 this.Dictionary[index] = value;
             }
         }
@@ -34,10 +36,13 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
             }
         }
 
-        public BWDictionary(int indexSize) =>
+        public BWDictionary(int indexSize)
+        {
             this.Dictionary = new ReadOnlyMemory<byte>[1 << indexSize];
+            this.IndexSize = indexSize;
+        }
 
-        public byte[] Serialize()
+        public ReadOnlyMemory<byte> Serialize()
         {
             // Precalculate total size so we don't resize the list.
             int size = 4; // 4 bytes for the dictionary size
