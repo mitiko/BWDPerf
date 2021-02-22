@@ -52,7 +52,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             var indexSize = Convert.ToInt32(Math.Ceiling(Math.Log2(dictionarySize)));
             var dictionary = new BWDictionary(indexSize);
 
-            for (int i = 0; i < dictionary.Length; i++)
+            for (int i = 0; i < dictionarySize; i++)
             {
                 int length = 0;
                 if (i == dictionary.STokenIndex)
