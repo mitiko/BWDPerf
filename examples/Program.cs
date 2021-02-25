@@ -7,6 +7,7 @@ using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using BWDPerf.Architecture;
 using BWDPerf.Transforms.Algorithms.BWD;
+using BWDPerf.Transforms.Algorithms.BWD.Ranking;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
@@ -27,7 +28,7 @@ public class BWDBenchmark
     public async Task Compress()
     {
         var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/enwik6", 1_000_000)
-            .ToCoder(new BWDEncoder(new Options(maxWordSize: 16, indexSize: 8)))
+            .ToCoder(new BWDEncoder(new Options(maxWordSize: 16, indexSize: 8), new NaiveRanking(8, 8)))
             .ToCoder(new BlockToBytes())
             .Serialize(new SerializeToFile("encoded"));
 

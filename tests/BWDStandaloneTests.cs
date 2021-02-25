@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using BWDPerf.Architecture;
 using BWDPerf.Transforms.Algorithms.BWD;
+using BWDPerf.Transforms.Algorithms.BWD.Ranking;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
@@ -37,7 +38,7 @@ namespace BWDPerf.Tests
         private async Task RunBWDWithOptions(Options options, int bufferSize)
         {
             var compressTask = new BufferedFileSource(_enwik4, bufferSize)
-                .ToCoder(new BWDEncoder(options))
+                .ToCoder(new BWDEncoder(options, new NaiveRanking(8, options.IndexSize)))
                 .ToCoder(new BlockToBytes())
                 .Serialize(new SerializeToFile(_compressedFile));
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BWDPerf.Interfaces;
 using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
@@ -9,9 +10,14 @@ namespace BWDPerf.Transforms.Algorithms.BWD
     internal class BWD
     {
         internal Options Options { get; }
+        public IBWDRanking Ranking { get; }
         internal SuffixArray SA { get; set; }
 
-        internal BWD(Options options) => this.Options = options;
+        internal BWD(Options options, IBWDRanking ranking)
+        {
+            this.Options = options;
+            this.Ranking = ranking;
+        }
 
         internal BWDictionary CalculateDictionary(ReadOnlyMemory<byte> buffer)
         {
@@ -35,7 +41,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     break;
                 }
 
-                word = GetHighestRankedWord(ref wordCount);
+                foreach (var wordCountPair in wordCount)
+                    this.Ranking.Rank(wordCountPair.Key, wordCountPair.Value);
+                word = this.Ranking.GetTopRankedWords().First().Word;
                 // Save the word to the dictionary
                 dictionary[i] = buffer.Slice(word.Location, word.Length).ToArray();
                 SplitByWord(buffer, word, ref wordRef, ref wordCount);
@@ -47,13 +55,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             }
 
             return dictionary;
-        }
-
-        internal double Rank(Word word, ref OccurenceDictionary<Word> wordCount)
-        {
-            var c = wordCount[word]; // Count of this word
-            var l = word.Length;
-            return (l * this.Options.BPC - this.Options.IndexSize) * (c - 1);
         }
 
         internal void FindAllMatchingWords(ReadOnlyMemory<byte> buffer, ref int[][] wordRef)
@@ -102,21 +103,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                         wordCount.Add(new Word(wordRef[i][j], i + 1));
                 }
             }
-        }
-
-        internal Word GetHighestRankedWord(ref OccurenceDictionary<Word> wordCount)
-        {
-            var bestWord = wordCount.Keys.First();
-            double rank, newRank;
-            rank = Rank(bestWord, ref wordCount);
-            foreach (var word in wordCount.Keys)
-            {
-                newRank = Rank(word, ref wordCount);
-                if (newRank >= rank) { bestWord = word; rank = newRank; }
-                // TODO: Make considerations on the contexts from which the words were taken
-            }
-
-            return bestWord;
         }
 
         internal void SplitByWord(ReadOnlyMemory<byte> buffer, Word word, ref int[][] wordRef, ref OccurenceDictionary<Word> wordCount)
