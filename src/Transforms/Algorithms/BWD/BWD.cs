@@ -25,7 +25,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             int[][] wordRef = new int[this.Options.MaxWordSize][];
             var wordCount = new OccurenceDictionary<Word>();
 
-            this.SA = new SuffixArray(buffer); // O(b log b)
+            var timer= System.Diagnostics.Stopwatch.StartNew();
+            this.SA = new SuffixArray(buffer, this.Options.MaxWordSize); // O(b log b)
+            Console.WriteLine($"SA took: {timer.Elapsed}");
             FindAllMatchingWords(buffer, ref wordRef); // Initialize words -> O(mb log b)
             this.SA = null; // Deallocate the suffix array, since we're not using it anymore
             CountWords(ref wordRef, ref wordCount); // Count the matching words

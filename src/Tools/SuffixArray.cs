@@ -8,12 +8,14 @@ namespace BWDPerf.Tools
     {
         public int[] SA { get; }
 
-        public SuffixArray(ReadOnlyMemory<byte> data)
+        public SuffixArray(ReadOnlyMemory<byte> data, int maxWord = -1)
         {
             // Prefix doubling - taking O(n log n) time
             // An optimization can be done to calculate a partial suffix array in O(n log m) where m is the biggest string we'll be searching by
             int n = data.Length;
             int nn = n + 1;
+            if (maxWord == -1)
+                maxWord = nn;
             var s = data.Span;
             const int alphabet = 256;
             var p = new int[nn]; // Backwards sorted positions of equivalence
@@ -48,7 +50,7 @@ namespace BWDPerf.Tools
             // Same as the positions and equivalence classes but for the next iteration
             var pn = new int[nn];
             var cn = new int[nn];
-            for (int h = 0; (1 << h) < nn; ++h)
+            for (int h = 0; (1 << h) < maxWord; ++h)
             {
                 // Calculate the positions array
                 for (int i = 0; i < nn; i++)
