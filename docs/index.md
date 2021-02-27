@@ -1,180 +1,173 @@
-<head>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.10.2/dist/katex.min.css" integrity="sha384-yFRtMMDnQtDRO8rLpMIKrtPCD5jdktao2TV19YiZYWMDkUR5GQZR/NOVTdquEx1j" crossorigin="anonymous">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.10.2/dist/katex.min.js" integrity="sha384-9Nhn55MVVN0/4OFx7EE5kpFBPsEMZxKTCnA+4fqDmg12eCTqGi6+BB2LjY8brQxJ" crossorigin="anonymous"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.10.2/dist/contrib/auto-render.min.js" integrity="sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
-</head>
-{% seo %}
+# BWD
 
-# BWDPerf
+BWD stands for Best Word Dictionary.
 
-BWD is a dictionary coder, that provides sub-optimal dictionaries and patterned words.
+# Progress
 
-## Introduction
+BWD started in September 2020, as a dictionary coder, aimed at compressing genetic data.
+As a proof of concept project, it managed to get close to gzip on small text files (not genetic data) with emulated entropy coding, thus prompting me to write a more efficient implementation.
 
-A dictionary coder encodes strings of characters (also called words) as individual symbols, that then can go through an entropy coder of choice.
-There are 2 types of dictionary coders - static and dynamic.
+BWDPerf is the continuation of the project.
+It is still experimental and a lot of frequent changes are happenning to the core algorithm.
+The goal is to settle on what works and what slows us down, then implement it more efficiently in C++.
 
-| Static coders    | Dynamic coders |
-| ---------------- | -------------- |
-| Static coders encode their dictionary in the beggining of a file and don't change it. | Dynamic coders can adapt to the content and change their dictionaries while coding.
-| They're usually used for pre-processing of text. | The LZ77 and LZ78 family are the most famous. They're proven to be asymptotically optimal at their job.
+Even if it doesn't prove to be way better than LZ77, I will come out with more knowledge of how dictionary coding techniques work in essence.
 
-## BWD
+# The idea
 
-BWD compresses data in blocks. With bigger blocks, the compression ratio imporves, the encoding speed increases, but the decoding speed decreases.
-BWD can be considered a semi-dynamic dictionary. It adapts to the context (restricted to the block) but then emits a static [optimal](#3-optimality) or sub-optimal dictionary.  
-What makes it able to perform better than the LZ family is that it can capture long repeated words in the very beggining of the stream, without trashing the entire dictionary of unused/useless/dead words. Asymptotically they're probably equal (not proved, yet), but what gives BWD an extra boost is [patterns](#4-patterns). And although it might seem tempting to skip and read how they work, I advise you not to.
+BWD is a dictionary transform that replaces strings of symbols with an index to a static dictionary.  
+Unlike LZ77/78 it computes a dictionary for the whole block and has to encode the dictionary in the compressed file.
 
-### 0. Idea
+The idea behind BWD is to compute an optimal dictionary.
+According to this paper (include link), the problem of parsing the text for such global dictionary techniques is related to the vertex cover problem, which is an NP-hard problem.  
+I haven't been able to prove it myself and there's no good reference to this claim in the paper but it intuitively makes sense.
 
-The idea for BWD started from wanting to create a dictionary-like coder that will be able to take advantage of overlapping words. This proved to be stupid, but led me to the semi-dynamic structure used.
+## History
+In the world of data compression, new improvements are rare, perhaps because of the sheer difficulty and beauty in data compression.  
+Entropy coding is proven to be asymptotically optimal and the next best way to beat entropy is dictionary coding.
+Since the creation of the LZ77 algorithm by A.Lempel and J. Ziv there hasn't really been any new foundationally different approach to replacing strings of symbols with new symbols.
+I decided to think over that. One night I went for a run and got the idea of fully covering the text with small stickers - words.
+I started working on it and the foundations were quickly formed:
 
-To ensure no words overlap, we must have an ordered dictionary.
-This is because the dictionary `["the","en"]` will encode `"then"` as `[0]n`, while the dictionary `["en","the"]` will encode it as `th[0]`. The idea is to split the stream into smaller blocks (each representing a word) in the best way possible.
+1) The dictionary must have be ordered.
+2) Words must be limited in length.
+3) Words must be ranked.
 
-Working on how this might improve current dictionary coders (or more like whether it can beat them at all), I figured [patterns](#4-patterns) are possible.
+As I dug deeper, 2) and 3) are avoidable but are rules, required for keeping the compression feasably fast.
+The first thing I had a problem with was overlapping words - if 2 words overlap we have to choose one over the other, and the best way to do that is to add the requirement that the dictionary be ordered. This is not a problem for decompression - after we've chosen the best dictionary and encoded the data, we can sort it alphabetically. The requirement holds while compressing and during parsing.
 
-Also sounds cool that you can say it doesn't work backwards and forwards, but rather form the middle-out haha.
+The next rule of limiting the word length is pretty self-explanatory. The longer words we have, the less likely they are to occur and the more space we're taking in the dictionary section of the compressed file. Unlike LZ77 optimal parsing, where longer matches mean more compression, here we always statically store the first occurence of every word.
 
-### 1. Algorithm
+How do we order the dictionary? The easiest way to order any set is to define a characteristic by which it can be compared to other entities in the set. Thus we define the rank of a word as a metric of how useful it is to aid the compression of the file. There's other more optimal ways to choose the best dictionary but those are ultimately NP-hard.  
+For example, we can try every possible ordering. This takes O(w!) time, where w is the number of words.
+And to your best surprise, the word count is actually O(mn) where n is the stream size and m is the max word length.
 
-As noted above, BWD needs an ordered dictionary. To creates such, we go through all possible words up to size \\(m\\):
-\\({W = \{w : \|w\| < m\}}\\)  
-Next we rank each word using a [ranking](#21-ranking) algorithm: 
-\\({r(w) \in \R, \forall w\in W}\\).
+Optimality is unfeasable and frankly it won't be the compression won't be that much better.
 
-We sort the words based on their ranking and remove all words that can't exist in the stream.
-For example: `them` as a word can't exist in the dictionary if it follows `the`. This is not as simple as it sounds, we can't just remove words that are supersets of words higher up, for example:
-The word `noted` might never appear after `as no` and `ted above` in some contexts, but not always as was the case for `the` and `them`.  
-We can take advantage of that and remove all superset words \\(O(\|W\|^2)\\). And then go through the block to find words of the second kind. We call those static and dynamic elimination respectively.
-What is left will be our dictionary.
+# Inner workings
 
-You can see that the compression rate depends on the ranking used, while time depends on the block size used.
+I started out by finding a good ranking function. What's a good metric for how good a word is? Intuitively I went for a simple `(wordCount - 1) * (wordLength)`. The idea behind it being that we're searching for more common words that are as long as possible, substracting 1 because we're essentially not compressing the first occurence of any word.
 
-After a sample implementation of the algorithm, I noticed some words will change their ranking. This is because of words like `noted`, when ranking, their occurences in the stream will be counter, but after words that overlap `noted`, its count can change, and therefore it's ranking, which leads us to worse than [optimal](#3-optimality) compression.  
-Instead, what I decided to do is choose the highest ranked word, split the block by this word, select all words that still exist and re-rank them.
+So what the first PoC project did was to create a list with all possible words, sort them by their rank and eliminate the ones that will be unused.  
+For example if we have the word "a", we can't have the word "ab" after it in the dictionary, as we've removed all the "a"-s from the stream already.  
+I called this static elimination.
+It's followed by dynamic elimination, where we runtime check if the word exists in the stream.
 
-### 2. Ordering
+Looking back on it, this is wildly inefficent. But calculating the entropy over the new stream and seeing it being close to gzip and others, made me believe there's more to it than a toy. It could also only handle just a couple of kilobytes of data max, because of the gigantic allocations. I was storing each word as its individual string - that's stupid, don't do that for O(mn) strings.
 
-Choosing an ordered dictionary is in the heart of BWD. We can find an optimal one in \\({O(\|W\|!)}\\) time, but since \\(\|W\|\\) is on the order of \\({O(m^3({b\over m} - {2 \over 3}))}\\), for block size \\(b\\) and word limit \\(m\\), this impractical.
+The second problem I run into was how to handle the text ones we remove a word from it.
+We can't just stitch the parts together, then it would be undecodable by the decompressor.
+We split the whole text into multiple contexts (as I called them).
+Then we just continue to encode, but note that words can't span between two contexts.
+After reading some literature on LZ77 and LZ78, I realize this is the parsing stage of the compressor.
 
-The next best thing to bruteforce is bubble sort. We start with some order and check if switching the places of 2 words will give us an advantage. This makes some assumptions of how ordered dictionaries work, which are incorrect, but still give a good sub-optimal order - for example some group of words can be better together, than individually, but since we're making moves individual moves, groups won't be preserved. Also checking for an advantage can't be practically done by applying the algorithm for each order - it's done by a cost function, which gets as close to the real thing as a ranking would - read below.
+When I started BWDPerf, I improved the ranking first.
+When we eliminate a word from the text, the contexts change and with it the count of some words and with it, their ranking.
+This means, we can't just order the words by their rank and work on that ordering.
+We only need the highest ranked word. Then we'll re-rank after each choosing of a word.
 
-### 2.1 Ranking
+The final structure looked something like:
+```
+Compression:
+while (not everything is encoded):
+    count_words()
+    rank_words()
+    var word = ranks.max()
+    split_by(word)
+    add_to_dictionary(word)
 
-Ranking the words to order them, gives them an individual value (which as explained above is not always the case, but workarounds are possible).
+Decompression:
+while (there's data to read):
+    index = read_byte()
+    write(dictionary[index])
+```
 
-The most intuitive approach, and also my first idea, was to see how many characters we're cutting off.
-We're essentially replacing a bunch of symbols with a single symbol. (The use of symbol, instead of character, or literal implies the connection to an entropy coder afterwards.)
-So it's intuitive to start with:  
-\\(r(w) = (\|w\| - 1) f(w),\\)  
-where \\(f(w)\\) is the frequency in the input stream or occurences count. This ranking represents loss of information, just like entropy does - individual loss * frequency (or probability), so we must be on the right track.  
-Next we notice that some really long strings start to get ranked highly, when in fact their frequency is low, and they seem not as usable. We can correct that by remembering the dictionary gets encoded to the output as well -> we should substract 1 occurence, because we're gaining as much information:  
-\\(r(w) = (\|w\| - 1)f(w) - \|w\|\\)  
-But we can modify all ranks by a constant +1 to improve readability and aesthetics:  
-\\(r(w) = (\|w\| - 1)(f(w) - 1)\\)  
-Very nice! But we're still not quite there.
-The ranking should assume we're replacing each word with 1 symbol, but we're relating it to count of characters, which are 8 bits each => unintentionally it's like we've been replacing each word with 1 literal, not symbol, i.e. 1 byte.  
-To fix that, we need to know how long the dictionary will be, therefore we must set a constant size for it, or try the algorithm for all dictionary sizes (not as impractical than \\(O(\|W\|!)\\))  
-Either way, regardless of overall implementation of the algorithm, let's say we've chosen a dictionary size of \\(d = 2^r\\), where \\(r = log_2(d)\\) and represents our index size. Having a fixed index size of the dictionary (also called codeword for the word) stays blind to the ability of entropy coders to approximate entropy, **more research is needed to find an entropy based ranking algorithm.** Now we can calculate the loss, not in symbols, but bits:  
-\\(r(w)=(f(w) - 1)(\|w\|bpc - r),\\)  
-where \\(bpc\\) is bits per character and is 8 for text files and for example 2 for genetic data.
-This is of yet, the best and most practical ranking algorithm.
+The last big problem left to solve was the limited dictionary size.
+When BWD isn't followed by an entropy coder, it must encode the indexes to the dictionary with a fixed number of bits.
+If we let the dictionary size change mid-compression, the rankings wouldn't be accurate.
+To fix that, I decided to add an escape token, encoded as a word.
+You'll see it in my code as SToken.
+We add words to the dictionary until just one space is left.
+It's reserved for the "<s>" token.
+Everything left to encode gets summed up into one string and contexts are seperated by an escape character 0xff.
+This one big string - the STokenData is stored in the dictionary section.
+When decoding, if the "<s>" token is encountered, it copies bytes from the dictionary section, until an escape character is hit.
 
-There does exist a complication when choosing a good dictionary, though - it may not cover the whole stream. Some individual characters may be left floating around alone, or in small groups. To fix that, we reserve an extra pattern word, that matches all consecutive characters (the supplementary to such a word, also called the `<s>` token in most of my notes, are the characters themselves, followed by an escape symbol, that switches the context back to words, or in this scenario ends the block).
+This method made it hard to keep all words into one data structure and introduced some problems because of the mismatch in parsing between the decompressor and compressor. Ultimately, it helped me find some bugs that would have otherwise remained hidden for at least the next 10 versions.
 
-There does exist the idea that ranking can be done by a neural net, but I haven't found a good loss function representation to train it on. As to speedwise, the current ranking is pretty fast, and can actually be optimized with a lookup table.
+# Optimizations made
 
-### 3. Optimality
+Since the first more efficient implementation I have made lots of changes.
+I'm bouncing between memory constraints and speed.
+Bigger files are too slow to compute in one block, so I make the algorithm faster by allocating more memory but now even larger files use too much memory, so I optimize the algorithm to use better data structures and allocate less.
+It's been a constant battle but I'm still seeing a lot places where improvements can be made. My goal for now is to compute the dictionary for enwik8 in one block in under 1 minute.
 
-As discussed above, optimality can be reached and will be reached in a finite amount of operations, but this remains impractical for now (quantum computers may give it a new breath, but until then...). When is optimality reached?
-We have to max all our constants:  
-\\(b=n, m=n,\\) ordering is done in \\(O(\|W\|!)\\) time, and all orderings are tried. This will for sure give us better results than most LZ implementations. Actually, before any proper testing (and with sub-optimal ordering) it is almost certain BWD is a better dictionary than most dynamic ones. When we take into account a complex group of patterns and context switching (both areas, where work is still needed), it will redefine the limits of a dictionary coder. More on that at [context splitting](#1b-context-splitting).
+Since I'm constantly developing and changing stuff, I haven't had the time to make a release. Still, when I hit enwik8 in under a minute, I'll drop it as v1.
+As for now, here's a basic changelog:
 
-Let's assume some dictionary is being used. We can calculate the compression ratio, fairly easily by counting the bits in the input in 2 ways - by characters and by words. (Please contact me for a full proof and more of my notes.) We'll end up with the following:  
+## v0.2
 
+The first change I did that improved everything was to store matches.
+After we split the data by a word, the counts of a lot of words change.
+We need the counts of words for any ranking function, so insted of recounting, we should only update the rankings of words near a split location.
 
+Easy in theory but in practice, quite difficult. Eventually, I had the idea of a matrix (currently in code referred to as the wordRef matrix beacuse it shows the first reference to this word), which keeps track of how words are linked together. Like a graph. It takes 4n bytes and simultaneously keeps track of where data is split, which is also pretty cool.
+We can also modify the hashtable for words and use words as (location, length) pairs, which simplifies the hashing.
 
-$$\Large
-\gamma = \log_{\alpha}d \times { {1}\over{\sum\limits_{w \in W}p(w)\|w\| } }
-$$  
+## v0.3
 
+Eventually I was able to move to testing on enwik4 and the transform took about 90 seconds on it. enwik5 would need more than 10 minutes and I tried once with enwik6, which didn't finish in under 6 hours on my laptop.
 
+I identified the problem as the way I'm searching for matches - it takes O(m n^2) time.
+I searched for better string searching algorithms and the ony one that really works is the FM-index.
+It can do search in O(m) time (where m is the max string length).
 
-For an alphabet \\({A: \|A\| = \alpha,}\\) dictionary of size \\(d\\) and probability of word \\(\large {p(w): \sum\limits_{w \in W}p(w)=1}\\)  
-Which is oddly similiar to entropy, except we're dividing rather than substracting. The probability times the word length corresponds to the probability times optimal code length in entropy.
+Looking into the FM-index, though, I realize that the underlying suffix array is where the magic's at. And we can directly use the suffix array in more places to speed up compression.
+I copied a simple O(n logn) implementation and got it to work. I then debugged this implementation for 8 hours straight to find a stupid mistake I made in copying arrays.
+I'm grateful I made that mistake as well, as I actaully spent time to understand how the algorithm works and found out I can speed up initialization to O(n log m) (where m is the max word size).
 
-If we somehow convert this metric to a ranking function, we'll have an optimality constraint and this will be proof that BWD gets asymptotically close to entropy, moreover it will prove BWD + entropy coder gets asymptotically closer to the compression limit than any LZ implementation paired with an entropy coder.
+Currently, the suffix array computation is the least expensive one speedwise. A lot of refactoring also took place.
 
-### 4. Patterns
+## v0.3.1
 
-Patterns are a new type of word, that can match multiple unique strings.
-For example the pattern `the*` can match `"the\x20"`, `"them"`, `"then"`. It can also match parts of words: `"there"`, `"other"`, `"thier"`, `"weather"`.
-You can see how a simple pattern can decrease the entropy of the produced word stream.
+I added an interface for ranking. This makes it easy to swap in and out new ranking algorithms.
 
-Patterns come with a cost, though - after each occurence of a pattern word, we must emit some literals for the decoder to use. There's a plus side to it as well - supplementary literals can exist in a context of their own.
-For example, the pattern `q*` will most likely have a supplementary `"u"`, which in a context of its own has an entropy of close to 0 bits. The example with `the*` has supplementary literals from the set of `{"\x20","m","n","r", ...}`. Encoding each of those in a context of their own saves us a lot of bits, compared to having to use the words `"the\x20"`,`"them"`,`"then"`,`"ther"` all together in the main context.
+I got motivated, since I found calculated the best ranking function.
+I'll post my math here tommorow.
 
-Another advantage to patterns is that there is practically no limit to what they can be and represent. They can be error correction codes, that get emitted when a limit of error is surpassed. They can be regex for emails, etc.
+## v0.4 - working on it
 
-We may inject patterns that match different HTML tags, using context splitting for stuff like enwik8, enwik9:  
-A pattern like `<(A+)>.</(A+)>` can cover a lot of text and split contexts into 2 - html tags (inbetween the `<` and `>`) and regular words / main context for the stuff between the tags. Some tags rarely have tags inside them and we may switch to that context, with a conditional on the html tag - if we have a `<p>` tag, it's likely there aren't any tags inside, but only words, which allows for a better tailored dictionary in this new context.
+The wordRef matching still takes too much time and I only need the counts of words.
+We don't have to search every word for O(n log n) matching, since the suffix array basically provides us with a sorted list of all words.
+We can enumerate over that to acquire word counts.
 
-To be honest patterns are a bit of a cheat, as they're more context splitting orientated than dictionary related, but it is a fact no LZ coder can use non-pre-defined patterns.
-
-### 5. Generating patterns
-
-Obviously we can't generate all possible regex patterns at runtime, instead we can limit ourselves to a set of patterns and rules and explicitly add some useful regex's directly in the encoder (those don't need to be written to the stream if not used, as long as the decoder can recognise them in the dictionary).  
-For each selected word (pre-ranking), we create all possible patterns that match that word, and add it to the list of words. We only need unique patterns. It is important patterns and words get ranked together, therefore the ranking function must be modified to accomodate for the information gain that supplementary literals/symbols create.
-
-Here are some proposals for matching symbols in patterns:  
-
-| Pattern symbol | What it matches |
-| -------------- | --------------- |
-| `*` | any character |
-| `*+` or `.` | any amount of characters |
-| `A` through `Z`, ie. uppercase letters | any repeating unique characters in a word |
+In v0.3 I didn't actually implement the feature of only updating the counts and ranks of words, since the wordRef matrix made it very convinient to do both in O(word count).
 
 
-_Examples_:  
-`the*` matches `them, the\x20, then, there, another, bother, father, mother, they, their, northern, prometheus`  
-`.` matches all of `aaaa, abcd, a\x20long\x20word, t, m, tmmtmtmtmtm`  
-`*AAi` matches `getting, tossing, possing, begging, shagging, tagging, snapping`, in fact here we might use `.AAing` better.
-better?  
-`AAe` matches `better, attention, acquitted, latter, ladder, lottery, logged, pegged, pattern, embedded`, here `AAed` is also very common. It is expected that BWD learns such lexical features as prefixes and postfixes.  
-Here are some non-english examples too:  
-`*о*а` matches `вода, кола, пола, трола, троша, пода, мола, пола, корона, трона, бона`  
+# Research
 
-## Areas of work and research
+I'll post more about alternative ideas I came up with in the process for optimal parsing and for better compression, and modeling over the new alphabet.
 
-a) Lagrangian optimizations for ordering  
-b) Context splitting  
-c) Independent symbols  
-d) Independent words
+Some of the imporatant ideas, shortly are:
 
-### 1b. Context splitting
+## Patterns
 
-Patterns are the very basic example of context splitting, and where the idea came from.
+We can use patterns as words. Imagine a regex "a*b". It can match "aab" and "abb".  
+But it doesn't have to be a regex. The "<s>" token for example is also a pattern.
 
-Note, context splitting is not a BWD-bound feature, like patterns.
+The abstract idea is that a pattern can match more words (the s token, matching all words of all lengths) but at the cost of having to complement each match with extra data to say which word it actually matched.
 
-Context has a different meaning in entropy coders and context mixers, because they process the data linearly. We'll define context as a new data stream that is embedded in the original. The idea is to emit additional context switching symbols inbetween contexts and switch all context releated feature for encoding the next region of data (like dictionaries, models, markov chains, whole data compression algorithms as well). This is kinda being done for archives, where images are compressed as a different context than text, but nothing is done dynamically yet.
-Dynamic Huffman coders and some fancier LZ coders also employ this idea partially by reseting the trie or dictionary when their coding gets over a certain treshold over the optimal entropy. Sometimes they even preserve a part of the previous context for faster drop in entropy. But they never come back to a previous context or switch multiple times in a short amount of time.
+The complementary data to patterns has it's own context as well and should be predicted by a different set of models. For example, the pattern "<*+/>" (not real regex, just pseudocode) matching all xml tags.
+The complementary data to those would be limited to a lot less words. In fact it would make some sense to dictionary encode the new complementary stream as well.
 
-We'll let the coder decide what contexts need to be used and leave it operate on those. This is pretty hard, but it will entropy at each context with minimal gain, for a good enough context splitting algorithm.
+Another pattern would be the complementary sequence in DNA. Let's say we have the word "ACTG". We can match this pattern with "ACTG" and its complementary "TGAC", resulting in a complementary bit which differentiates between the two. This bistream is now very compressable, since one bit will be a lot more frequent. Order-0 models would actually work a lot better on it.
 
-My initial thoughts are to create a sliding minimax window of sorts, with a size that is yet to be determined or calculatable. We'll move this window along the stream/block and we'll do the following at each position:  
-Select all the symbols in this region (that the window covers). Color all the symbols in the stream that exist in this set. Everything that we've colored (including the window itself) will be our first context. The window is called a minimax one, because it is the minimal size of the biggest context region that will be colored. Next we recolor some stuff back / uncolor it, if you will. This is done to ensure only high-quality regions will be colored and can be done by looking at the amount of words that are overlap between colored regions. For example region1 contains 4 occurences of "the", while our window contains 0, we will give this region a lower weight.
-We select the best regions and calculate information loss. For each position of the sliding window we know the best (computable this way) configuration of context splitting and the respective losses. We can now select the best one (with the biggest alleged information loss) and repeat the process if we want to create more contexts (2+).
+## Contexts
 
-### 1c. Independent symbols
+The idea of patterns sparked the idea of contexts. What if we create a graph of dictionaries - different contexts and we have an extra symbol to switch between them. There's a lot of potential in its abstract form.
 
-I'll be brief with those, as I'm not sure they are very applicable.
+A cool use of this would be to use multiple dictionaries created with multiple ranking algorithms and let a context mixer choose what dictionary/context to encode the next symbols with.
 
-We split the alphabet of symbols \\(A\\) into two disjoined stes of symbols:  
-\\(\large S_1 \cup S_2 = A, S_1 \cap S_2 = \varnothing\\)  
-All the words generated from those sets will be independent and can be ranked/ordered independently of the others in the final ranking/ordering.
+Btw, cool fact, this requires an on-line encoding method for dictionary coders, which exists but it's harder to implement.
 
-### 1d. Independent words
-
-Since disjoined sets produce a lot of symbols and not enough independ words, we can try graph all prefixes and postfixes of words and find independent word pairs or groups. The end goal is again to simplify ordering/ranking. Although it's not actually a simplification in the bigger picture, when ranking/ordering we have less restrictions and can use better optimization algorithms to find an optimal ordering.
+We don't have to bound ourselves to dictionaries, either...
