@@ -5,9 +5,9 @@ Best Word Dictionary
 # Introduction
 
 There are 3 main ways to compress data:
-1) Dictionary coding
-2) Entropy coding + modeling
-3) Block sorting algorithms
+1. Dictionary coding
+2. Entropy coding + modeling
+3. Block sorting algorithms
 
 ## Block sorting
 
@@ -29,9 +29,9 @@ Most compressors combine a dictionary coding scheme with an entropy coder and us
 
 # Types of dictionary coders
 There are 3 types of dictionary coders:
-1) static dictionaries
-2) semi-adaptive dictionaries
-3) adaptive dictionaries
+1. static dictionaries
+2. semi-adaptive dictionaries
+3. adaptive dictionaries
 
 
 The idea of dictionary coding is to modify the alphabet of symbols occuring in the stream by replacing symbols that show up together frequently (words) with an index pointing to the word in the dictinary.

@@ -29,9 +29,9 @@ Since the creation of the LZ77 algorithm by A.Lempel and J. Ziv there hasn't rea
 I decided to think over that. One night I went for a run and got the idea of fully covering the text with small stickers - words.
 I started working on it and the foundations were quickly formed:
 
-1) The dictionary must have be ordered.
-2) Words must be limited in length.
-3) Words must be ranked.
+1. The dictionary must have be ordered.
+2. Words must be limited in length.
+3. Words must be ranked.
 
 As I dug deeper, 2) and 3) are avoidable but are rules, required for keeping the compression feasably fast.
 The first thing I had a problem with was overlapping words - if 2 words overlap we have to choose one over the other, and the best way to do that is to add the requirement that the dictionary be ordered. This is not a problem for decompression - after we've chosen the best dictionary and encoded the data, we can sort it alphabetically. The requirement holds while compressing and during parsing.
@@ -88,10 +88,10 @@ If we let the dictionary size change mid-compression, the rankings wouldn't be a
 To fix that, I decided to add an escape token, encoded as a word.
 You'll see it in my code as SToken.
 We add words to the dictionary until just one space is left.
-It's reserved for the "<s>" token.
+It's reserved for the s token.
 Everything left to encode gets summed up into one string and contexts are seperated by an escape character 0xff.
 This one big string - the STokenData is stored in the dictionary section.
-When decoding, if the "<s>" token is encountered, it copies bytes from the dictionary section, until an escape character is hit.
+When decoding, if the s token is encountered, it copies bytes from the dictionary section, until an escape character is hit.
 
 This method made it hard to keep all words into one data structure and introduced some problems because of the mismatch in parsing between the decompressor and compressor. Ultimately, it helped me find some bugs that would have otherwise remained hidden for at least the next 10 versions.
 
@@ -153,7 +153,7 @@ Some of the imporatant ideas, shortly are:
 ## Patterns
 
 We can use patterns as words. Imagine a regex "a*b". It can match "aab" and "abb".  
-But it doesn't have to be a regex. The "<s>" token for example is also a pattern.
+But it doesn't have to be a regex. The s token for example is also a pattern.
 
 The abstract idea is that a pattern can match more words (the s token, matching all words of all lengths) but at the cost of having to complement each match with extra data to say which word it actually matched.
 
