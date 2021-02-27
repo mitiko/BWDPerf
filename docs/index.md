@@ -29,9 +29,9 @@ Since the creation of the LZ77 algorithm by A.Lempel and J. Ziv there hasn't rea
 I decided to think over that. One night I went for a run and got the idea of fully covering the text with small stickers - words.
 I started working on it and the foundations were quickly formed:
 
-1. The dictionary must have be ordered.
-2. Words must be limited in length.
-3. Words must be ranked.
+1. The dictionary must be ordered
+2. Words must be limited in length
+3. Words must be ranked
 
 As I dug deeper, 2) and 3) are avoidable but are rules, required for keeping the compression feasably fast.
 The first thing I had a problem with was overlapping words - if 2 words overlap we have to choose one over the other, and the best way to do that is to add the requirement that the dictionary be ordered. This is not a problem for decompression - after we've chosen the best dictionary and encoded the data, we can sort it alphabetically. The requirement holds while compressing and during parsing.
