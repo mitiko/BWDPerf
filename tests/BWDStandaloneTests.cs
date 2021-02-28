@@ -38,7 +38,7 @@ namespace BWDPerf.Tests
         private async Task RunBWDWithOptions(Options options, int bufferSize)
         {
             var compressTask = new BufferedFileSource(_enwik4, bufferSize)
-                .ToCoder(new BWDEncoder(options, new NaiveRanking(8, options.IndexSize)))
+                .ToCoder(new BWDEncoder(options, new NaiveRanking(8, options.IndexSize, options.MaxWordSize)))
                 .ToCoder(new BlockToBytes())
                 .Serialize(new SerializeToFile(_compressedFile));
 

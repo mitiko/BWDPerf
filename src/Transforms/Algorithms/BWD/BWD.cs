@@ -10,8 +10,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
     internal class BWD
     {
         internal Options Options { get; }
-        public IBWDRanking Ranking { get; }
+        internal IBWDRanking Ranking { get; }
         internal SuffixArray SA { get; set; }
+        internal BitVector BitVector { get; private set; }
 
         internal BWD(Options options, IBWDRanking ranking)
         {
@@ -21,167 +22,150 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
         internal BWDictionary CalculateDictionary(ReadOnlyMemory<byte> buffer)
         {
+            // Inspect all methods
+            // Select locations that need to be recounted
+            // Keep a bit vector of counted places
+            // When splitting, zero out the locations that need to be recounted
+            // Recount these locations until the bitvector is full
+
             var dictionary = new BWDictionary(this.Options.IndexSize);
-            int[][] wordRef = new int[this.Options.MaxWordSize][];
-            var wordCount = new OccurenceDictionary<Word>();
 
             var timer= System.Diagnostics.Stopwatch.StartNew();
-            this.SA = new SuffixArray(buffer, this.Options.MaxWordSize); // O(b log b)
-            Console.WriteLine($"SA took: {timer.Elapsed}");
-            FindAllMatchingWords(buffer, ref wordRef); // Initialize words -> O(mb log b)
-            this.SA = null; // Deallocate the suffix array, since we're not using it anymore
-            CountWords(ref wordRef, ref wordCount); // Count the matching words
+            this.SA = new SuffixArray(buffer, this.Options.MaxWordSize); // O(b log m) construction
+            Console.WriteLine($"SA took: {timer.Elapsed}"); timer.Restart();
+            this.BitVector = new BitVector(buffer.Length, bit: true);
+            RankAllWords(buffer);
+            Console.WriteLine($"Ranking took: {timer.Elapsed}"); timer.Restart();
+            // Initialize with all bits set
 
             for (int i = 0; i < dictionary.Length; i++)
             {
-                Word word;
+                // The last word in the dictionary is always an <s> token
+                // If the words in the dictionary cover the whole buffer, there might not be an <s> token
+                // In future versions, we'll assume entropy coding is used after and the dictionary size won't be limited, rendering the need for stoken useless.
                 if (i == dictionary.STokenIndex)
                 {
-                    // The last word in the dictionary is always an <s> token
-                    // If the words in the dictionary cover the whole buffer, there might not be an <s> token
-                    dictionary[i] = CollectSTokenData(buffer, ref wordRef, dictionary);
+                    dictionary[i] = CollectSTokenData(buffer);
                     break;
                 }
 
-                foreach (var wordCountPair in wordCount)
-                    this.Ranking.Rank(wordCountPair.Key, wordCountPair.Value);
-                word = this.Ranking.GetTopRankedWords().First().Word;
-                // Save the word to the dictionary
+                RankAllWords(buffer);
+                var word = this.Ranking.GetTopRankedWords().First().Word;
                 dictionary[i] = buffer.Slice(word.Location, word.Length).ToArray();
-                SplitByWord(buffer, word, ref wordRef, ref wordCount);
-                CountWords(ref wordRef, ref wordCount);
+                SplitByWord(buffer, word);
 
-                // When all references have been encoded, save the dictionary size and exit
-                if (wordCount.Values.Sum() == 0) // TODO: can this be just .count
+                // if there's no more words to encode, we're done
+                if (this.BitVector.IsEmpty())
                     break;
             }
+            Console.WriteLine($"The rest took: {timer.Elapsed}");
 
             return dictionary;
         }
 
-        internal void FindAllMatchingWords(ReadOnlyMemory<byte> buffer, ref int[][] wordRef)
+        internal void RankAllWords(ReadOnlyMemory<byte> buffer)
         {
-            // Initialize the matrix
-            for (int i = 0; i < wordRef.Length; i++)
-            {
-                wordRef[i] = new int[buffer.Length - i];
-                for (int j = 0; j < wordRef[i].Length; j++)
-                    wordRef[i][j] = -2;
-            }
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            var matches = new SortedSet<int>[this.Options.MaxWordSize];
+            for (int i = 0; i < matches.Length; i++)
+                matches[i] = new SortedSet<int>();
 
-            for (int i = 0; i < wordRef.Length; i++)
+            for (int n = 0; n < this.SA.Length - 1; n++)
             {
-                for (int j = 0; j < wordRef[i].Length; j++)
+                var curr = this.SA[n];
+                var next = this.SA[n+1];
+
+                // Matched
+                for (int k = 0; k < this.Options.MaxWordSize && curr + k < buffer.Length; k++)
+                    matches[k].Add(curr);
+
+                int matchLength = 0;
+                for (matchLength = 0; matchLength < this.Options.MaxWordSize; matchLength++)
                 {
-                    if (wordRef[i][j] != -2) continue;
-                    wordRef[i][j] = j;
+                    if (curr + matchLength >= buffer.Length) break;
+                    if (next + matchLength >= buffer.Length) break;
+                    if (buffer.Span[curr + matchLength] != buffer.Span[next + matchLength]) break;
+                }
 
-                    var searchResults = this.SA.Search(data: buffer, word: buffer.Slice(j, i + 1));
-                    int lastMatch = j;
-                    for (int s = 0; s < searchResults.Length; s++)
-                    {
-                        int pos = searchResults[s];
-                        if (pos >= lastMatch + i + 1)
-                        {
-                            wordRef[i][pos] = j;
-                            lastMatch = pos;
-                        }
-                    }
+                // Not matched
+                for (int k = matchLength; k < this.Options.MaxWordSize; k++)
+                {
+                    if (matches[k].Count == 0) break;
+                    var (word, count) = CountWord(matches[k], k+1);
+                    this.Ranking.Rank(word, count);
+                    matches[k].Clear();
                 }
             }
+            // TODO: fix last word
+            // matches.Add(this.SA[this.SA.Length - 1]);
+            // var m = CountWord(matches, j + 1);
+            // // rank
+            // wc.Add(m.word, m.count);
         }
 
-        internal void CountWords(ref int[][] wordRef, ref OccurenceDictionary<Word> wordCount)
+        internal void SplitByWord(ReadOnlyMemory<byte> buffer, Word word)
         {
-            wordCount.Clear();
-            for (int i = 0; i < wordRef.Length; i++)
-            {
-                for (int j = 0; j < wordRef[i].Length; j++)
-                {
-                    if (wordRef[i][j] == -2)
-                        throw new Exception("The matching hasn't covered all the words");
-
-                    if (wordRef[i][j] != -1)
-                        wordCount.Add(new Word(wordRef[i][j], i + 1));
-                }
-            }
-        }
-
-        internal void SplitByWord(ReadOnlyMemory<byte> buffer, Word word, ref int[][] wordRef, ref OccurenceDictionary<Word> wordCount)
-        {
-            var locations = new int[wordCount[word]]; int x = 0;
-            for (int j = 0; j < buffer.Length; j++)
-            {
-                // Find all locations of this word l
-                if (j >= wordRef[word.Length - 1].Length) break;
-                if (wordRef[word.Length - 1][j] != word.Location) continue;
-                locations[x++] = j;
-                j += word.Length - 1;
-            }
-
+            // TODO: Suffix array search by word;
+            // var locations = this.SA.Search(buffer, word);
+            var locations = this.SA.Search(buffer, buffer.Slice(word.Location, word.Length));
+            var lastMatch = -1;
             for (int l = 0; l < locations.Length; l++)
             {
-                for (int i = 0; i < wordRef.Length; i++)
-                {
-                    // Define start and end of exclusion region
-                    int start = locations[l] - i;
-                    int end = locations[l] + word.Length - 1;
-                    // Enforce bounds
-                    start = start >= 0 ? start : 0;
-                    end = end < wordRef[i].Length ? end : wordRef[i].Length - 1;
-                    // Mark as unavailable
-                    for (int s = start; s <= end; s++)
-                        wordRef[i][s] = -1;
-                }
+                if (l == 0) lastMatch = locations[l];
+
+                var start = locations[l]; // start inclusive
+                var end = locations[l] + word.Length; // end exclusive
+
+                if (start < lastMatch + word.Length) continue;
+                lastMatch = start;
+
+                for (int s = start; s < end; s++)
+                    this.BitVector[s] = false;
             }
         }
 
-        internal byte[] CollectSTokenData(ReadOnlyMemory<byte> buffer, ref int[][] wordRef, BWDictionary dictionary)
+        internal byte[] CollectSTokenData(ReadOnlyMemory<byte> buffer)
         {
-            var list = new List<byte>();
-            // This is the same parsing code as in encode dictionary.
-            // TODO: Extract parsing code in a new method
-            // Or we can also use the wordRef / bitvector to see which places remain uncovered and collect the stoken like that
-            var data = new int[buffer.Length];
-            var stoken = dictionary.STokenIndex;
-            for (int k = 0; k < data.Length; k++)
-                data[k] = stoken;
-
-            for (int i = 0; i < dictionary.WordCount; i++)
-            {
-                var word = dictionary[i];
-                for (int j = 0; j < buffer.Length; j++)
-                {
-                    // check if location is used
-                    if (data[j] != stoken) continue;
-                    if (j + word.Length - 1 >= buffer.Length) break; // can't fit word
-                    var match = true;
-                    for (int s = 0; s < word.Length; s++)
-                        if (buffer.Span[j + s] != word.Span[s] || data[j+s] != stoken) { match = false; break; }
-
-                    if (match == true)
-                    {
-                        for (int k = 0; k < word.Length; k++)
-                            data[j+k] = i;
-                    }
-                }
-            }
-
-            for (int k = 0; k < data.Length; k++)
+            // TODO: add extra seperator when the stoken contains the seprator symbol
+            // TODO: implement rank in bitvector 
+            // var stoken = new List<byte>(capacity: this.BitVector.Rank(bit: true));
+            var stoken = new List<byte>();
+            for (int i = 0; i < this.BitVector.Length; i++)
             {
                 bool readStoken = false;
-                while (data[k] == stoken)
+                while (this.BitVector[i])
                 {
                     if (!readStoken) readStoken = true;
-                    list.Add(buffer.Span[k]);
-                    k++;
-                    if (k>= data.Length) break;
+                    stoken.Add(buffer.Span[i]);
+                    i++;
+                    if (i >= buffer.Length) break;
                 }
 
                 if (readStoken)
-                    list.Add(0xff);
+                    stoken.Add(0xff);
             }
-            return list.ToArray();
+            return stoken.ToArray();
+        }
+
+        internal (Word word, int count) CountWord(SortedSet<int> matches, int length)
+        {
+            int curr = matches.First();
+            int count = 1;
+            foreach (var next in matches)
+            {
+                if (next >= curr + length)
+                {
+                    bool available = true;
+                    for (int i = 0; i < length; i++)
+                        if (!this.BitVector[next+i]) { available = false; break; }
+                    if (available)
+                    {
+                        curr = next;
+                        count++;
+                    }
+                }
+            }
+            return (new Word(curr, length), count);
         }
     }
 }

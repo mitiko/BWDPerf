@@ -1,12 +1,13 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace BWDPerf.Tools
 {
     public class SuffixArray
     {
         public int[] SA { get; }
+
+        public int this[int index] => this.SA[index];
+        public int Length => this.SA.Length;
 
         public SuffixArray(ReadOnlyMemory<byte> data, int maxWord = -1)
         {

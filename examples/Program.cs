@@ -6,7 +6,9 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using BWDPerf.Architecture;
+using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD;
+using BWDPerf.Transforms.Algorithms.BWD.Entities;
 using BWDPerf.Transforms.Algorithms.BWD.Ranking;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
@@ -20,6 +22,7 @@ class Program
         Console.WriteLine("Started");
         // BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
         await new BWDBenchmark().Compress();
+        await new BWDBenchmark().Decompress();
     }
 }
 
@@ -28,8 +31,9 @@ public class BWDBenchmark
     [Benchmark]
     public async Task Compress()
     {
-        var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/enwik7", 10_000_000)
-            .ToCoder(new BWDEncoder(new Options(maxWordSize: 32, indexSize: 8), new NaiveRanking(8, 8)))
+        var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/enwik4", 10_000_000)
+            .ToCoder(new BWDEncoder(new Options(maxWordSize: 32, indexSize: 8), new NaiveRanking(8, 8, 32)))
+            .ToCoder<BWDBlock, BWDBlock>(new MeasureEntropy())
             .ToCoder(new BlockToBytes())
             .Serialize(new SerializeToFile("encoded"));
 
