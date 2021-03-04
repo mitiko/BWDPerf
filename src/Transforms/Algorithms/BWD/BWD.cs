@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using BWDPerf.Interfaces;
 using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
@@ -30,12 +29,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
             var dictionary = new BWDictionary(this.Options.IndexSize);
 
-            var timer= System.Diagnostics.Stopwatch.StartNew();
             this.SA = new SuffixArray(buffer, this.Options.MaxWordSize); // O(b log m) construction
-            Console.WriteLine($"SA took: {timer.Elapsed}"); timer.Restart();
             this.BitVector = new BitVector(buffer.Length, bit: true);
             RankAllWords(buffer);
-            Console.WriteLine($"Ranking took: {timer.Elapsed}"); timer.Restart();
             // Initialize with all bits set
 
             for (int i = 0; i < dictionary.Length; i++)
@@ -50,7 +46,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 }
 
                 RankAllWords(buffer);
-                var word = this.Ranking.GetTopRankedWords().First().Word;
+                var word = this.Ranking.GetTopRankedWords()[0].Word;
                 dictionary[i] = buffer.Slice(word.Location, word.Length).ToArray();
                 SplitByWord(buffer, word);
 
@@ -58,17 +54,15 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 if (this.BitVector.IsEmpty())
                     break;
             }
-            Console.WriteLine($"The rest took: {timer.Elapsed}");
 
             return dictionary;
         }
 
         internal void RankAllWords(ReadOnlyMemory<byte> buffer)
         {
-            var timer = System.Diagnostics.Stopwatch.StartNew();
-            var matches = new SortedSet<int>[this.Options.MaxWordSize];
+            var matches = new List<int>[this.Options.MaxWordSize];
             for (int i = 0; i < matches.Length; i++)
-                matches[i] = new SortedSet<int>();
+                matches[i] = new List<int>();
 
             for (int n = 0; n < this.SA.Length - 1; n++)
             {
@@ -108,16 +102,16 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             // TODO: Suffix array search by word;
             // var locations = this.SA.Search(buffer, word);
             var locations = this.SA.Search(buffer, buffer.Slice(word.Location, word.Length));
-            var lastMatch = -1;
             for (int l = 0; l < locations.Length; l++)
             {
-                if (l == 0) lastMatch = locations[l];
-
                 var start = locations[l]; // start inclusive
                 var end = locations[l] + word.Length; // end exclusive
 
-                if (start < lastMatch + word.Length) continue;
-                lastMatch = start;
+                // Check location hasn't been used
+                bool available = true;
+                for (int s = start; s < end; s++)
+                    if (!this.BitVector[s]) { available = false; break; }
+                if (!available) continue;
 
                 for (int s = start; s < end; s++)
                     this.BitVector[s] = false;
@@ -127,7 +121,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
         internal byte[] CollectSTokenData(ReadOnlyMemory<byte> buffer)
         {
             // TODO: add extra seperator when the stoken contains the seprator symbol
-            // TODO: implement rank in bitvector 
+            // TODO: implement rank in bitvector
             // var stoken = new List<byte>(capacity: this.BitVector.Rank(bit: true));
             var stoken = new List<byte>();
             for (int i = 0; i < this.BitVector.Length; i++)
@@ -136,6 +130,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 while (this.BitVector[i])
                 {
                     if (!readStoken) readStoken = true;
+                    // TODO: Check if the decoder knows about that. I don't think the tests have 0xff
+                    if (buffer.Span[i] == 0xff)
+                        stoken.Add(0xff);
                     stoken.Add(buffer.Span[i]);
                     i++;
                     if (i >= buffer.Length) break;
@@ -147,9 +144,10 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             return stoken.ToArray();
         }
 
-        internal (Word word, int count) CountWord(SortedSet<int> matches, int length)
+        internal (Word word, int count) CountWord(List<int> matches, int length)
         {
-            int curr = matches.First();
+            matches.Sort();
+            int curr = matches[0];
             int count = 1;
             foreach (var next in matches)
             {

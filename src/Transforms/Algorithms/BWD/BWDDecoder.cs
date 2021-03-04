@@ -60,7 +60,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 else
                     length = await GetNextByte(enumerator);
                 var word = new byte[length];
-                Console.WriteLine($"Reading word length to be {length} and index is {i}");
+                // Console.WriteLine($"Reading word length to be {length} and index is {i}");
                 for (int j = 0; j < word.Length; j++)
                     word[j] = await GetNextByte(enumerator);
                 dictionary[i] = word;
