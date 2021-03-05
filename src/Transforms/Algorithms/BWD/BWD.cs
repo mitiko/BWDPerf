@@ -60,6 +60,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
         internal void RankAllWords(ReadOnlyMemory<byte> buffer)
         {
+            // This is basically analogous to constructing the LCP array over the suffix array
             var matches = new List<int>[this.Options.MaxWordSize];
             for (int i = 0; i < matches.Length; i++)
                 matches[i] = new List<int>();
@@ -90,11 +91,18 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     matches[k].Clear();
                 }
             }
-            // TODO: fix last word
-            // matches.Add(this.SA[this.SA.Length - 1]);
-            // var m = CountWord(matches, j + 1);
-            // // rank
-            // wc.Add(m.word, m.count);
+            // Add matches of the last word
+            var last = this.SA[this.SA.Length - 1];
+            for (int k = 0; k < this.Options.MaxWordSize && last + k < buffer.Length; k++)
+                    matches[k].Add(last);
+            // Last word doesn't match anything
+            for (int k = 0; k < this.Options.MaxWordSize; k++)
+            {
+                if (matches[k].Count == 0) break;
+                var (word, count) = CountWord(matches[k], k+1);
+                this.Ranking.Rank(word, count);
+                matches[k].Clear();
+            }
         }
 
         internal void SplitByWord(ReadOnlyMemory<byte> buffer, Word word)
