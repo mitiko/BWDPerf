@@ -33,5 +33,21 @@ namespace BWDPerf.Tests
                 vector[13] = true;
             });
         }
+
+
+        [TestMethod]
+        public void TestPartialCases()
+        {
+            for(int i = 0; i < 256; i++)
+            {
+                var vector = new BitVector(i, true);
+                for(int j = 0; j < i; j++)
+                {
+                    Assert.IsFalse(vector.IsEmpty());
+                    vector[j] = false;
+                }
+                Assert.IsTrue(vector.IsEmpty());
+            };
+        }
     }
 }
