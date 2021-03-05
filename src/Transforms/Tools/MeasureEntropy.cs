@@ -43,9 +43,9 @@ namespace BWDPerf.Transforms.Tools
                     .Select(x => - Math.Log2(x) * x)
                     .Sum();
                 var size = block.Dictionary.Serialize().Length;
-                Console.WriteLine($"this many symbols {block.Stream.Length}");
+                Console.WriteLine($"Number of symbols: {block.Stream.Length}");
                 Console.WriteLine($"[{this.GetHashCode()}] Entropy: {entropy}; Count: {this.ODInt.Count}");
-                Console.WriteLine($"dictionary takes {size} bytes");
+                Console.WriteLine($"Dictionary size: {size} bytes");
                 yield return block;
             }
         }
