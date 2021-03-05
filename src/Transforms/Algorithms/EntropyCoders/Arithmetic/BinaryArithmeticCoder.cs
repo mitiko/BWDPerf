@@ -11,15 +11,16 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.Arithmetic
         public BinaryArithmeticCoder(IModel<bool> model) =>
             this.Model = model;
 
-        public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<ReadOnlyMemory<TSymbol>> input)
+        public IAsyncEnumerable<byte> Encode(IAsyncEnumerable<ReadOnlyMemory<TSymbol>> input)
         {
-            await foreach (var buffer in input)
-            {
-                // uint low = 0u;
-                // uint high = uint.MaxValue;
-                InitializeModel();
-                yield return 0xff; // TODO
-            }
+            throw new NotImplementedException();
+            // await foreach (var buffer in input)
+            // {
+            //     // uint low = 0u;
+            //     // uint high = uint.MaxValue;
+            //     InitializeModel();
+            //     yield return 0xff; // TODO
+            // }
         }
 
         private void InitializeModel()

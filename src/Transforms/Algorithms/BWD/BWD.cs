@@ -77,8 +77,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 int matchLength = 0;
                 for (matchLength = 0; matchLength < this.Options.MaxWordSize; matchLength++)
                 {
-                    if (curr + matchLength >= buffer.Length) break;
-                    if (next + matchLength >= buffer.Length) break;
+                    if (curr + matchLength >= buffer.Length || next + matchLength >= buffer.Length) break;
                     if (buffer.Span[curr + matchLength] != buffer.Span[next + matchLength]) break;
                 }
 
@@ -107,8 +106,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
         internal void SplitByWord(ReadOnlyMemory<byte> buffer, Word word)
         {
-            // TODO: Suffix array search by word;
-            // var locations = this.SA.Search(buffer, word);
             var locations = this.SA.Search(buffer, buffer.Slice(word.Location, word.Length));
             for (int l = 0; l < locations.Length; l++)
             {
@@ -128,9 +125,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
         internal byte[] CollectSTokenData(ReadOnlyMemory<byte> buffer)
         {
-            // TODO: add extra seperator when the stoken contains the seprator symbol
-            // TODO: implement rank in bitvector
-            // var stoken = new List<byte>(capacity: this.BitVector.Rank(bit: true));
             var stoken = new List<byte>();
             for (int i = 0; i < this.BitVector.Length; i++)
             {
@@ -138,7 +132,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 while (this.BitVector[i])
                 {
                     if (!readStoken) readStoken = true;
-                    // TODO: Check if the decoder knows about that. I don't think the tests have 0xff
+                    // TODO: Add tests with 0xff
                     if (buffer.Span[i] == 0xff)
                         stoken.Add(0xff);
                     stoken.Add(buffer.Span[i]);

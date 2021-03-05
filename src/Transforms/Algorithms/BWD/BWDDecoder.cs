@@ -42,7 +42,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     // TODO: Try replace bit queues with an integer
                 }
 
-                // TODO: Fix everywhere we use arrays but can deal without
+                // TODO: Fix everywhere we use arrays but can deal without - meaning, remove LINQ as a dependecy cause it slows us down
                 yield return new BWDBlock(dictionary, new BWDStream(stream.ToArray()));
             }
         }

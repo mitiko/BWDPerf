@@ -43,10 +43,5 @@ namespace BWDPerf.Tools
 
             return true;
         }
-
-        public int Rank(bool bit)
-        {
-            throw new System.NotImplementedException();
-        }
     }
 }
