@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 
 namespace BWDPerf.Tools
 {
@@ -14,7 +13,10 @@ namespace BWDPerf.Tools
 
         public int GetHashCode(byte[] key)
         {
-            return new BigInteger(key).GetHashCode();
+            uint hash = 0;
+            for (int i = key.Length - 1; i >= 0; i--)
+                hash = (key[i] + hash + 1) * 2654435761;
+            return (int)hash;
         }
     }
 }
