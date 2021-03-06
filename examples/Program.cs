@@ -31,8 +31,8 @@ public class BWDBenchmark
     [Benchmark]
     public async Task Compress()
     {
-        var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/enwik4", 10_000_000)
-            .ToCoder(new BWDEncoder(new Options(maxWordSize: 32, indexSize: 8), new NaiveRanking(8, 8, 32)))
+        var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/enwik4", 1_000)
+            .ToCoder(new BWDEncoder(new Options(maxWordSize: 12, indexSize: 5), new NaiveRanking(8, 5, 12)))
             .ToCoder<BWDBlock, BWDBlock>(new MeasureEntropy())
             .ToCoder(new BlockToBytes())
             .Serialize(new SerializeToFile("encoded"));

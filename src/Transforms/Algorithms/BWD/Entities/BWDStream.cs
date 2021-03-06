@@ -58,45 +58,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
                 k += offset;
             }
 
-            foreach (var index in stream)
-            {
-                if (index == stoken)
-                {
-                    Console.WriteLine("<s> token");
-                }
-                else
-                {
-                    var word = dictionary[index];
-                    var str = "";
-                    foreach (var symbol in word.Span)
-                    {
-                        str += (char) symbol;
-                    }
-                    Console.WriteLine($"\"{str}\"");
-                }
-            }
-            var s1 = dictionary[stoken];
-            var str1 = "";
-            foreach (var symbol in s1.Span)
-            {
-                if (symbol == 0xff)
-                    str1 += '$';
-                else
-                    str1 += (char) symbol;
-            }
-            Console.WriteLine($"stoken: --- \"{str1}\"");
-            Console.WriteLine("DICT:");
-            for (int i = 0; i < dictionary.Length; i++)
-            {
-                var w = dictionary[i];
-                var sstr = "";
-                foreach (var symbol in w.Span)
-                {
-                    sstr += (char) symbol;
-                }
-                Console.WriteLine($"dict -- \"{sstr}\"");
-            }
-
             this.Stream = stream.ToArray();
         }
     }
