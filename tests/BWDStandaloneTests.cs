@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using BWDPerf.Architecture;
@@ -51,14 +52,11 @@ namespace BWDPerf.Tests
 
             await decompressTask;
 
-            Assert.AreEqual(ComputeHash(_enwik4), ComputeHash(_decompressedFile));
+            Assert.IsTrue(CompareFiles(_enwik4,_decompressedFile));
         }
 
-        private string ComputeHash(string filePath)
-        {
-            using var sha256 = SHA256Managed.Create();
-            using var fileStream = File.OpenRead(filePath);
-            return Convert.ToBase64String(sha256.ComputeHash(fileStream));
-        }
+        private bool CompareFiles(string filePath1, string filePath2)
+            => File.ReadAllBytes(filePath1).SequenceEqual(File.ReadAllBytes(filePath2));
+        
     }
 }

@@ -1,21 +1,21 @@
 using System.Collections.Generic;
-using System.Linq;
 
 namespace BWDPerf.Tools
 {
     public class OccurenceDictionary<TKey> : Dictionary<TKey, int>
     {
-        public bool Add(TKey key)
+        public void Add(TKey key)
         {
-            var isFirstOccurence = !base.ContainsKey(key);
-            if (isFirstOccurence)
-                base.Add(key, 1);
-            else
-                base[key]++;
-
-            return isFirstOccurence;
+            base.TryGetValue(key, out var currentCount);
+            base[key] = currentCount + 1;
         }
 
-        public int Sum() => base.Values.Sum();
+        public int Sum()
+        {
+            int sum = 0;
+            foreach (var x in base.Values)
+                sum += x;
+            return sum;
+        }
     }
 }

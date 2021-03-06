@@ -9,30 +9,30 @@ namespace BWDPerf.Tools
             get
             {
                 if (index >= this.Length) throw new System.IndexOutOfRangeException();
-                return (this.Array[index >> 5] & (1 << (31 - index & 31))) != 0;
+                return ((this.Array[index >> 5] >> (index & 31)) & 1) != 0;
             }
             set
             {
-                var bit = this[index];
-                if (bit == value) return;
-                int pos = 31 - index & 31;
-                if (bit == true)
-                    this.Array[index >> 5] -= (uint) (1 << pos);
+                if (index >= this.Length) throw new System.IndexOutOfRangeException();
+                int pos = index & 31;
+                if (value)
+                    this.Array[index >> 5] |= (1u << pos);
                 else
-                    this.Array[index >> 5] += (uint) (1 << pos);
+                    this.Array[index >> 5] &= uint.MaxValue ^ (1u << pos);
             }
         }
 
         public BitVector(int length, bool bit = false)
         {
             this.Length = length;
-            this.Array = new uint[(length >> 5) + ((length & 31) == 0 ? 0 : 1)];
+            var lastIsPartial = (length & 31) != 0;
+            this.Array = new uint[(length >> 5) + (lastIsPartial ? 1 : 0)];
             if (bit)
             {
-                for (int i = 0; i < this.Array.Length - 1; i++)
+                for (int i = 0; i < this.Array.Length - (lastIsPartial ? 1 : 0); i++)
                     this.Array[i] = uint.MaxValue;
-
-                this.Array[this.Array.Length - 1] = (uint) (uint.MaxValue - (1 << (32 - length & 31)) + 1);
+                if (lastIsPartial)
+                    this.Array[this.Array.Length - 1] = (1u << (length & 31)) - 1;
             }
         }
 

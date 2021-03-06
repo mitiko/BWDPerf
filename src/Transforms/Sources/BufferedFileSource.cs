@@ -12,11 +12,9 @@ namespace BWDPerf.Transforms.Sources
         public FileInfo File { get; }
         public int BufferSize { get; }
 
-        public BufferedFileSource(string fileName, int bufferSize = -1)
+        public BufferedFileSource(string fileName, int bufferSize = 16384)
         {
             this.File = new FileInfo(fileName);
-            if (bufferSize < 0)
-                bufferSize = (16 << 10); // 16Kb default buffer
             this.BufferSize = bufferSize;
         }
 
