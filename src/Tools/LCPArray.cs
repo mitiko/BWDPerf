@@ -9,34 +9,38 @@ namespace BWDPerf.Tools
         public int this[int index] => this.LCP[index];
         public int Length => this.LCP.Length;
 
+        // kasai algorithm for LCP construction from SA in O(n)
         public LCPArray(ReadOnlyMemory<byte> buffer, SuffixArray SA)
         {
             var T = buffer.Span;
             int n = T.Length;
-            var Phi = new int[n];
-            var PLCP = new int[n];
-            this.LCP = new int[n-1];
+            LCP = new int[n-1];
 
-            for (int i = 1; i < n; i++)
-                Phi[SA[i]] = SA[i-1];
+            var SAinv = new int[n];
+            for (int i = 0; i < n; i++)
+                SAinv[SA[i]] = i;
 
-            int l = 0;
-            for (int j = 0; j < n; j++)
+            int k = 0;
+            for (int i = 0; i < n; i++)
             {
+                if (SAinv[i] == n-1)
+                {
+                    k = 0;
+                    continue;
+                }
+                int j = SA[SAinv[i]+1];
+
                 while (true)
                 {
-                    var phi = Phi[j];
-                    if (j+l >= n) break;
-                    if (phi+l >= n) break;
-                    if (T[j+l] != T[phi+l]) break;
-                    l++;
+                    if (i+k >= n) break;
+                    if (j+k >= n) break;
+                    if (T[i+k] != T[j+k]) break;
+                    k++;
                 }
-                PLCP[j] = l;
-                if (l > 0) l--;
-            }
 
-            for (int i = 0; i < n-1; i++)
-                this.LCP[i] = PLCP[SA[i+1]];
+                LCP[SAinv[i]] = k;
+                if (k > 0) k--;
+            }
         }
     }
 }
