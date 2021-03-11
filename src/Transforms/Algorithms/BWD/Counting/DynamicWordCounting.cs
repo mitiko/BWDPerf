@@ -103,27 +103,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
                 }
                 else
                 {
-                    if (!this.Counts.ContainsKey(firstAdjWord))
-                    {
-                        Console.WriteLine($"Removed this word, but counted it {count} many times. adj=({firstAdjWord.Location}, {firstAdjWord.Length}); word=({word.Location}, {word.Length})");
-                        P(firstAdjWord, buffer, bitVector);
-                        P(word, buffer, bitVector);
-                    }
                     this.Counts[firstAdjWord] = count;
                 }
             }
-        }
-
-        public void P(Word word, ReadOnlyMemory<byte> buffer, BitVector bitVector)
-        {
-            var str = "";
-            var bv = "";
-            for (int i = 0; i < word.Length; i++)
-            {
-                str += (char) buffer.Span[word.Location+i];
-                bv += bitVector[word.Location+i] ? "1" : "0";
-            }
-            Console.WriteLine(str + "\n" + bv);
         }
 
         private (Word, int) CountWord(List<int> matches, int length, BitVector bitVector)
