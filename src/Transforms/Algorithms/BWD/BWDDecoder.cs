@@ -16,7 +16,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 var dictionarySize = await ReadInteger(enumerator);
                 if (dictionarySize == null) break; // We've reached end of stream
 
-                var dictionary = await ReadDictionary(enumerator, (int) dictionarySize);
+                var (dictionary, indexSize) = await ReadDictionary(enumerator, (int) dictionarySize);
                 int streamLength = (int) await ReadInteger(enumerator);
 
                 var stream = new List<int>(capacity: streamLength);
@@ -26,9 +26,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 for (int symbolsRead = 0; symbolsRead < streamLength;)
                 {
                     // Read from bit queue
-                    while (bits.Count >= dictionary.IndexSize && symbolsRead < streamLength)
+                    while (bits.Count >= indexSize && symbolsRead < streamLength)
                     {
-                        int index = ReadFromBitQueue(ref bits, dictionary.IndexSize);
+                        int index = ReadFromBitQueue(ref bits, indexSize);
                         stream.Add(index);
                         symbolsRead++;
                     }
@@ -47,25 +47,20 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             }
         }
 
-        private async Task<BWDictionary> ReadDictionary(IAsyncEnumerator<byte> enumerator, int dictionarySize)
+        private async Task<(BWDictionary, int)> ReadDictionary(IAsyncEnumerator<byte> enumerator, int dictionarySize)
         {
             var indexSize = Convert.ToInt32(Math.Ceiling(Math.Log2(dictionarySize)));
-            var dictionary = new BWDictionary(indexSize);
+            var dictionary = new BWDictionary();
 
             for (int i = 0; i < dictionarySize; i++)
             {
-                int length = 0;
-                if (i == dictionary.STokenIndex)
-                    length = (int) await ReadInteger(enumerator);
-                else
-                    length = await GetNextByte(enumerator);
+                int length = await GetNextByte(enumerator);
                 var word = new byte[length];
-                // Console.WriteLine($"Reading word length to be {length} and index is {i}");
                 for (int j = 0; j < word.Length; j++)
                     word[j] = await GetNextByte(enumerator);
                 dictionary[i] = word;
             }
-            return dictionary;
+            return (dictionary, indexSize);
         }
 
         private int ReadFromBitQueue(ref Queue<bool> bits, int bitsPerWord)

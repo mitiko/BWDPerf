@@ -7,18 +7,16 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
     public class NaiveRanking : IBWDRanking
     {
         public int BPC { get; }
-        public int IndexSize { get; }
         private RankedWord BestWord { get; set; }
         private readonly RankedWord InitialWord = new RankedWord(new Word(-1, -1), double.MinValue);
         private Dictionary<int, Dictionary<int, double>> LearnedRanks { get; set; }
 
-        public NaiveRanking(int bpc, int indexSize, int maxWordSize)
+        public NaiveRanking(Options options)
         {
-            this.BPC = bpc;
-            this.IndexSize = indexSize;
+            this.BPC = options.BPC;
             this.BestWord = InitialWord;
             this.LearnedRanks = new Dictionary<int, Dictionary<int, double>>();
-            for (int i = 1; i <= maxWordSize; i++)
+            for (int i = 1; i <= options.MaxWordSize; i++)
                 this.LearnedRanks.Add(i, new Dictionary<int, double>());
         }
 
@@ -26,7 +24,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         {
             if (!this.LearnedRanks[word.Length].TryGetValue(count, out var rank))
             {
-                var calcRank = (word.Length * this.BPC - this.IndexSize) * (count - 1);
+                var calcRank = (word.Length - 1) * (count - 1);
                 this.LearnedRanks[word.Length].Add(count, calcRank);
                 rank = calcRank;
             }

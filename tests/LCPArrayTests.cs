@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using BWDPerf.Tools;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -5,17 +6,18 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace BWDPerf.Tests
 {
     [TestClass]
-    public class SuffixArrayTests
+    public class LCPArrayTests
     {
         [TestMethod]
         public void TestString1()
         {
             var bytes = ToBytes("mississippi");
             var SA = new SuffixArray(bytes);
-            var ans = new int[] {10,7,4,1,0,9,8,6,3,5,2};
-            Assert.AreEqual(SA.Length, ans.Length);
+            var LCP = new LCPArray(bytes, SA);
+            var ans = new int[] {1,1,4,0,0,1,0,2,1,3};
+            Assert.AreEqual(LCP.Length, ans.Length);
             for (int i = 0; i < ans.Length; i++)
-                Assert.AreEqual(SA[i], ans[i]);
+                Assert.AreEqual(LCP[i], ans[i]);
         }
 
         [TestMethod]
@@ -23,26 +25,23 @@ namespace BWDPerf.Tests
         {
             var bytes = ToBytes("Wolloomooloo");
             var SA = new SuffixArray(bytes);
-            var ans = new int[] {0,2,9,3,6,11,1,8,5,10,7,4};
-            Assert.AreEqual(SA.Length, ans.Length);
+            var LCP = new LCPArray(bytes, SA);
+            var ans = new int[] {0,1,3,0,0,1,2,1,1,2,2};
+            Assert.AreEqual(ans.Length, LCP.Length);
             for (int i = 0; i < ans.Length; i++)
-                Assert.AreEqual(SA[i], ans[i]);
+                Assert.AreEqual(ans[i], LCP[i]);
         }
 
         [TestMethod]
-        public void TestSearch()
+        public void TestString3()
         {
             var bytes = ToBytes("bababdbabdbbabbdbabbbabdb");
             var SA = new SuffixArray(bytes);
-            var ans = new int[] {1,17,12,21,3,7,24,0,16,11,20,2,6,10,19,18,13,22,14,4,8,23,15,5,9};
-            Assert.AreEqual(SA.Length, ans.Length);
+            var LCP = new LCPArray(bytes, SA);
+            var ans = new int[] {2,3,2,4,4,0,1,3,4,3,5,5,1,4,2,2,1,3,5,3,0,2,4,2};
+            Assert.AreEqual(LCP.Length, ans.Length);
             for (int i = 0; i < ans.Length; i++)
-                Assert.AreEqual(SA[i], ans[i]);
-            var searchResults = SA.Search(bytes, ToBytes("bb"));
-            var sr = new int[] {10,13,18,19};
-            Assert.AreEqual(searchResults.Length, sr.Length);
-            for (int i = 0; i < sr.Length; i++)
-                Assert.AreEqual(searchResults[i], sr[i]);
+                Assert.AreEqual(LCP[i], ans[i]);
         }
 
         private byte[] ToBytes(string s) =>

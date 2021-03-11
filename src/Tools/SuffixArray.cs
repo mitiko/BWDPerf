@@ -4,7 +4,7 @@ namespace BWDPerf.Tools
 {
     public class SuffixArray
     {
-        public int[] SA { get; }
+        private int[] SA { get; }
 
         public int this[int index] => this.SA[index];
         public int Length => this.SA.Length;
