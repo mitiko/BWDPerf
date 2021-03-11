@@ -20,25 +20,17 @@ namespace BWDPerf.Tests
         private const string _decompressedFile = "../../../decompressed";
 
         [TestMethod]
-        public async Task ByteAlignedOneDictionary() =>
-            await RunBWDWithOptions(new Options(indexSize: 8, maxWordSize: 12), 100_000); // 100KB
+        public async Task OneDictionary() =>
+            await RunBWDWithOptions(new Options(maxWordSize: 12), 100_000); // 100KB
 
         [TestMethod]
-        public async Task NotByteAlignedOneDictionary() =>
-            await RunBWDWithOptions(new Options(indexSize: 6, maxWordSize: 12), 100_000); // 100KB
-
-        [TestMethod]
-        public async Task ByteAlignedMultipleDictionaries() =>
-            await RunBWDWithOptions(new Options(indexSize: 8, maxWordSize: 12), 1_000); // 1KB
-
-        [TestMethod]
-        public async Task NotByteAlignedMultipleDictionaries() =>
-            await RunBWDWithOptions(new Options(indexSize: 5, maxWordSize: 12), 1_000); // 1KB
+        public async Task MultipleDictionaries() =>
+            await RunBWDWithOptions(new Options(maxWordSize: 12), 1_000); // 1KB
 
         private async Task RunBWDWithOptions(Options options, int bufferSize)
         {
             var compressTask = new BufferedFileSource(_enwik4, bufferSize)
-                .ToCoder(new BWDEncoder(options, new NaiveRanking(8, options.IndexSize, options.MaxWordSize)))
+                .ToCoder(new BWDEncoder(options, new NaiveRanking(options)))
                 .ToCoder(new BlockToBytes())
                 .Serialize(new SerializeToFile(_compressedFile));
 

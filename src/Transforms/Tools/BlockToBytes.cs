@@ -13,7 +13,7 @@ namespace BWDPerf.Transforms.Tools
             {
                 // Write out the dictionary
                 yield return block.Dictionary.Serialize();
-                var bitsPerWord = Convert.ToInt32(Math.Ceiling(Math.Log2(block.Dictionary.WordCount)));
+                var bitsPerWord = Convert.ToInt32(Math.Ceiling(Math.Log2(block.Dictionary.Count)));
 
                 var bytes = new List<byte>();
                 bytes.AddRange(BitConverter.GetBytes(block.Stream.Length));
@@ -51,31 +51,10 @@ namespace BWDPerf.Transforms.Tools
         {
             await foreach (var block in input)
             {
-                int stokenStartIndex = 0;
                 for (int i = 0; i < block.Stream.Length; i++)
                 {
                     var index = block.Stream[i];
-                    if (index != block.Dictionary.STokenIndex)
-                    {
-                        yield return block.Dictionary[index];
-                        continue;
-                    }
-                    var data = new List<byte>();
-                    // TODO: We can use .Slice if we measure which index the current stoken ends at
-                    for (int j = stokenStartIndex; j < block.Dictionary.SToken.Length; j++)
-                    {
-                        if (block.Dictionary.SToken.Span[j] == 0xff)
-                        {
-                            if (j + 1 >= block.Dictionary.SToken.Length) break;
-
-                            if (block.Dictionary.SToken.Span[j + 1] == 0xff)
-                                { data.Add(0xff); j++; }
-                            else
-                                { stokenStartIndex = j + 1; break; }
-                        }
-                        else data.Add(block.Dictionary.SToken.Span[j]);
-                    }
-                    yield return data.ToArray();
+                    yield return block.Dictionary[index];
                 }
             }
         }

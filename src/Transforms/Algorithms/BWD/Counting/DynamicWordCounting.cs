@@ -11,56 +11,29 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
 
         public void CountAllWords(ReadOnlyMemory<byte> buffer, SuffixArray SA, BitVector bitVector, int maxWordSize)
         {
-            // This is basically analogous to constructing the LCP array over the suffix array
+            var LCP = new LCPArray(buffer, SA);
             var matches = new List<int>[maxWordSize];
             for (int i = 0; i < matches.Length; i++)
                 matches[i] = new List<int>();
 
-            for (int n = 0; n < SA.Length - 1; n++)
+            for (int i = 0; i < SA.Length; i++)
             {
-                var curr = SA[n];
-                var next = SA[n+1];
+                var curr = SA[i];
 
                 // Matched
                 for (int k = 0; k < maxWordSize && curr + k < buffer.Length; k++)
                     matches[k].Add(curr);
 
-                int matchLength = 0;
-                for (matchLength = 0; matchLength < maxWordSize; matchLength++)
-                {
-                    if (curr + matchLength >= buffer.Length || next + matchLength >= buffer.Length) break;
-                    if (buffer.Span[curr + matchLength] != buffer.Span[next + matchLength]) break;
-                }
+                int matchLength = i == LCP.Length ? 0 : LCP[i];
 
                 // Not matched
                 for (int k = matchLength; k < maxWordSize; k++)
                 {
                     if (matches[k].Count == 0) break;
                     var (word, count) = CountWord(matches[k], k+1, bitVector);
-                    try
-                    {
-
-                        this.Counts.Add(word, count);
-                    }
-                    catch
-                    {
-                        Console.WriteLine($"word -> ({word.Location}, {word.Length})");
-                    }
+                    this.Counts.Add(word, count);
                     matches[k].Clear();
                 }
-            }
-            // Add matches of the last word
-            var last = SA[SA.Length - 1];
-            for (int k = 0; k < maxWordSize && last + k < buffer.Length; k++)
-                    matches[k].Add(last);
-
-            // Last word doesn't match anything, so start at matchLength = 0
-            for (int k = 0; k < maxWordSize; k++)
-            {
-                if (matches[k].Count == 0) break;
-                var (word, count) = CountWord(matches[k], k+1, bitVector);
-                this.Counts.Add(word, count);
-                matches[k].Clear();
             }
         }
 
@@ -125,10 +98,32 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
                 var adjMatches = SA.Search(buffer, buffer.Slice(adjWord.Location, adjWord.Length));
                 var (firstAdjWord, count) = CountWord(adjMatches, adjWord.Length, bitVector);
                 if (count == 0)
+                {
                     this.Counts.Remove(firstAdjWord);
+                }
                 else
+                {
+                    if (!this.Counts.ContainsKey(firstAdjWord))
+                    {
+                        Console.WriteLine($"Removed this word, but counted it {count} many times. adj=({firstAdjWord.Location}, {firstAdjWord.Length}); word=({word.Location}, {word.Length})");
+                        P(firstAdjWord, buffer, bitVector);
+                        P(word, buffer, bitVector);
+                    }
                     this.Counts[firstAdjWord] = count;
+                }
             }
+        }
+
+        public void P(Word word, ReadOnlyMemory<byte> buffer, BitVector bitVector)
+        {
+            var str = "";
+            var bv = "";
+            for (int i = 0; i < word.Length; i++)
+            {
+                str += (char) buffer.Span[word.Location+i];
+                bv += bitVector[word.Location+i] ? "1" : "0";
+            }
+            Console.WriteLine(str + "\n" + bv);
         }
 
         private (Word, int) CountWord(List<int> matches, int length, BitVector bitVector)
