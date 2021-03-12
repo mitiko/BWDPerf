@@ -6,7 +6,8 @@ namespace BWDPerf.Interfaces
 {
     public interface IBWDRanking
     {
-        public void Rank(Word word, int count);
+        void Initialize(ReadOnlyMemory<byte> buffer);
+        public void Rank(Word word, int count, ReadOnlyMemory<byte> buffer);
         public List<RankedWord> GetTopRankedWords();
     }
 }

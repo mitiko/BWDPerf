@@ -32,6 +32,10 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
                     if (matches[k].Count == 0) break;
                     var (word, count) = CountWord(matches[k], k+1, bitVector);
                     this.Counts.Add(word, count);
+                    if (word.Length == 0)
+                    {
+                        Console.WriteLine("Len is 0");
+                    }
                     matches[k].Clear();
                 }
             }
