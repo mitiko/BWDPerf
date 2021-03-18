@@ -49,6 +49,5 @@ namespace BWDPerf.Tests
 
         private bool CompareFiles(string filePath1, string filePath2)
             => File.ReadAllBytes(filePath1).SequenceEqual(File.ReadAllBytes(filePath2));
-        
     }
 }

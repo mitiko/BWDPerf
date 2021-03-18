@@ -10,6 +10,10 @@ using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 using BWDPerf.Transforms.Algorithms.BWD.Ranking;
+using BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS;
+using BWDPerf.Transforms.Modeling;
+using BWDPerf.Transforms.Modeling.Submodels;
+using BWDPerf.Transforms.Quantizers;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
@@ -19,13 +23,28 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        Console.WriteLine("Started");
-        // BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+        var alphabet = Alphabet<byte>.ForText();
+        var model = new Order0(alphabet.Length);
+        var quantizer = new BasicQuantizer(model);
+        Console.WriteLine("Initialized");
         var timer = System.Diagnostics.Stopwatch.StartNew();
-        await new BWDBenchmark().Compress();
+        var compressTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/file.md", 10_000_000) // 10MB
+                .ToCoder(new RANSEncoder<byte>(alphabet, quantizer))
+                .Serialize(new SerializeToFile("encoded.rans"));
+        await compressTask;
+        // BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+        // await new BWDBenchmark().Compress();
         Console.WriteLine($"Compression took: {timer.Elapsed}");
         timer.Restart();
-        await new BWDBenchmark().Decompress();
+        // await new BWDBenchmark().Decompress();
+        var alphabet1 = Alphabet<byte>.ForText();
+        var model1 = new Order0(alphabet1.Length);
+        var quantizer1 = new BasicQuantizer(model1);
+        var decompressTask = new FileSource("encoded.rans")
+            .ToDecoder(new RANSDecoder<byte>(alphabet1, quantizer1))
+            .Serialize(new SerializeToFile("decoded.rans"));
+
+        await decompressTask;
         Console.WriteLine($"Decompression took: {timer.Elapsed}");
 
     }

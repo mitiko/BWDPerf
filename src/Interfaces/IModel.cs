@@ -1,18 +1,13 @@
-using System.Collections.Generic;
+using BWDPerf.Transforms.Modeling;
 
 namespace BWDPerf.Interfaces
 {
-    public interface IModel<TSymbol>
+    public interface IModel
     {
-        public void Initialize(ref Dictionary<TSymbol, int> initial);
-        // These two methods represent a probability p_s for symbol s:
-        // p_s = f_s / M, where M is the denominator
-        public int GetFrequency(TSymbol s);
-        public int GetDenominator();
+        // Get an array of probabilities for each symbol in the alphabet
+        public Prediction Predict();
 
-        public int GetCumulativeFrequency(TSymbol s);
-        public TSymbol GetSymbol(int y);
-
-        public void AddSymbol(TSymbol s);
+        // Update the model, knowing a specific symbol occured
+        public void Update(int symbolIndex);
     }
 }
