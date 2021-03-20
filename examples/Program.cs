@@ -12,6 +12,7 @@ using BWDPerf.Transforms.Algorithms.BWD.Entities;
 using BWDPerf.Transforms.Algorithms.BWD.Ranking;
 using BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS;
 using BWDPerf.Transforms.Modeling;
+using BWDPerf.Transforms.Modeling.Mixers;
 using BWDPerf.Transforms.Modeling.Submodels;
 using BWDPerf.Transforms.Quantizers;
 using BWDPerf.Transforms.Serializers;
@@ -24,11 +25,14 @@ class Program
     static async Task Main(string[] args)
     {
         var alphabet = Alphabet<byte>.ForText();
-        var model = new Order0(alphabet.Length);
+        var modelA = new Order0(alphabet.Length);
+        var modelB = new Order1(alphabet.Length);
+        var model = new SimpleMixer(modelA, modelB);
+        // var model = new Order0(alphabet.Length);
         var quantizer = new BasicQuantizer(model);
         Console.WriteLine("Initialized");
         var timer = System.Diagnostics.Stopwatch.StartNew();
-        var compressTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/file.md", 10_000_000) // 10MB
+        var compressTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/enwik4", 100_000_000) // 100MB
                 .ToCoder(new RANSEncoder<byte>(alphabet, quantizer))
                 .Serialize(new SerializeToFile("encoded.rans"));
         await compressTask;
@@ -38,7 +42,10 @@ class Program
         timer.Restart();
         // await new BWDBenchmark().Decompress();
         var alphabet1 = Alphabet<byte>.ForText();
-        var model1 = new Order0(alphabet1.Length);
+        var modelA1 = new Order0(alphabet.Length);
+        var modelB1 = new Order1(alphabet.Length);
+        var model1 = new SimpleMixer(modelA1, modelB1);
+        // var model1 = new Order0(alphabet.Length);
         var quantizer1 = new BasicQuantizer(model1);
         var decompressTask = new FileSource("encoded.rans")
             .ToDecoder(new RANSDecoder<byte>(alphabet1, quantizer1))

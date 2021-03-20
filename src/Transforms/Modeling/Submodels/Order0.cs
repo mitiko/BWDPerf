@@ -26,6 +26,5 @@ namespace BWDPerf.Transforms.Modeling.Submodels
 
         public void Update(int symbolIndex) =>
             this.Counts[symbolIndex]++;
-        // public void Update(int symbolIndex) {}
     }
 }
