@@ -9,7 +9,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
     public class EntropyRanking : IBWDRanking
     {
         private RankedWord BestWord { get; set; }
-        private readonly RankedWord InitialWord = new RankedWord(new Word(-1, -1), double.MinValue);
+        private readonly RankedWord InitialWord = RankedWord.Empty;
         private Dictionary<byte, double> FreqTable { get; } = new();
 
         private double C = 1; // symbols per byte
@@ -33,33 +33,29 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
                 Console.WriteLine($"'{(char) kvp.Key}' --> {kvp.Value}");
                 entropy -= kvp.Value * Math.Log2(kvp.Value);
             }
+            Console.WriteLine($"-> Inititial entropy: {entropy}");
 
             this.H = entropy;
-            this.BestWord = InitialWord;
+            this.BestWord = RankedWord.Empty;
         }
 
         public void Rank(Word word, int count, ReadOnlyMemory<byte> buffer)
         {
-            double pw = (double) count / (n - word.Length + 1);
-            double deltaC = pw * (1d / word.Length - word.Length);
-            // TODO: store deltaC in a hash table. It currently doesn't change after choosing a word.
-            double deltaH = - pw * Math.Log2(pw);
+            double pw = (double) count / n;
+            double deltaC = pw * (word.Length - 1);
+            // TODO: Store deltaC in a hash table of [length][count]
+            double deltaH = pw * Math.Log2(pw);
             for (int s = 0; s < word.Length; s++)
             {
                 double px = this.FreqTable[buffer.Span[word.Location + s]];
-                // Console.WriteLine($"px: {px}");
                 double pChange = px - pw;
-                // Console.WriteLine($"pChange: {pChange}");
-                deltaH -= (pChange * Math.Log2(pChange) - px * Math.Log2(px));
+                deltaH += pChange * Math.Log2(pChange) - px * Math.Log2(px);
             }
-            double dictOverhead = (double) (word.Length + 1) / n;
-            double rank = C * deltaH + deltaC * H - deltaC * deltaH - dictOverhead;
+            double dictOverhead = (double) 8 * (word.Length + 1) / n;
+            double rank = C * deltaH + deltaC * H + deltaC * deltaH - dictOverhead;
 
             if (rank > this.BestWord.Rank)
             {
-                Console.WriteLine($"deltaH: {deltaH}");
-                Console.WriteLine($"H: {H}");
-                Console.WriteLine($"Rank: {rank}");
                 this.BestWord = new RankedWord(word, rank);
                 this.dC = deltaC;
                 this.dH = deltaH;
@@ -71,7 +67,15 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             this.C -= this.dC;
             this.H -= this.dH;
             var word = this.BestWord;
-            this.BestWord = InitialWord;
+            this.BestWord = RankedWord.Empty;
+            if (word.Rank <= 0)
+            {
+                Console.WriteLine($"Final entropy estimated: {this.H}");
+                return new List<RankedWord>() { RankedWord.Empty };
+            }
+            Console.WriteLine($"dH: {dH}");
+            Console.WriteLine($"H: {H}");
+            Console.WriteLine($"Rank: {word.Rank}");
             return new List<RankedWord>() { word };
         }
     }
