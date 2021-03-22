@@ -2,5 +2,6 @@
 name: BWDPerf
 decription: BWD - A pattern based dictionary.
 markdown: kramdown
+future: true
 kramdown:
   math_engine: null
