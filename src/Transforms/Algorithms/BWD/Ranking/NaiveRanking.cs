@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using BWDPerf.Interfaces;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
@@ -20,7 +21,11 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
                 this.LearnedRanks.Add(i, new Dictionary<int, double>());
         }
 
-        public void Rank(Word word, int count)
+        public void Initialize(ReadOnlyMemory<byte> buffer)
+        {
+        }
+
+        public void Rank(Word word, int count, ReadOnlyMemory<byte> buffer)
         {
             if (!this.LearnedRanks[word.Length].TryGetValue(count, out var rank))
             {

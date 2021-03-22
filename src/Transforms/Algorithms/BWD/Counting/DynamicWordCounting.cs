@@ -9,7 +9,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
     {
         public Dictionary<Word, int> Counts { get; set; } = new();
 
-        public void CountAllWords(ReadOnlyMemory<byte> buffer, SuffixArray SA, BitVector bitVector, int maxWordSize)
+        public void CountAllRepeatedWords(ReadOnlyMemory<byte> buffer, SuffixArray SA, BitVector bitVector, int maxWordSize)
         {
             var LCP = new LCPArray(buffer, SA);
             var matches = new List<int>[maxWordSize];
@@ -31,7 +31,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
                 {
                     if (matches[k].Count == 0) break;
                     var (word, count) = CountWord(matches[k], k+1, bitVector);
-                    this.Counts.Add(word, count);
+                    if (count > 1)
+                        this.Counts.Add(word, count);
                     matches[k].Clear();
                 }
             }
@@ -98,15 +99,14 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
                 var adjMatches = SA.Search(buffer, buffer.Slice(adjWord.Location, adjWord.Length));
                 var (firstAdjWord, count) = CountWord(adjMatches, adjWord.Length, bitVector);
                 if (count == 0)
-                {
                     this.Counts.Remove(firstAdjWord);
-                }
                 else
-                {
                     this.Counts[firstAdjWord] = count;
-                }
             }
         }
+
+        // TODO: Don't parse when the word can't overlap with itself - i.e. for most text
+        // Also maybe write better parsing, since genetic data will overlap with itself a lot!
 
         private (Word, int) CountWord(List<int> matches, int length, BitVector bitVector)
         {

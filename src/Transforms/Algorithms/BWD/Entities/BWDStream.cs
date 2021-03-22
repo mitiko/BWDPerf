@@ -43,6 +43,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
             var stream = new List<int>();
             for (int k = 0; k < data.Length;)
             {
+                if (data[k] == -1) throw new Exception("Dictionary doesn't cover the whole stream!");
                 stream.Add(data[k]);
                 k += dictionary[data[k]].Length;
             }

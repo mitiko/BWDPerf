@@ -1,10 +1,11 @@
 using BWDPerf.Interfaces;
 using System.Text;
 using System.Collections.Generic;
+using System;
 
 namespace BWDPerf.Transforms.Tools
 {
-    public class CapitalConversion : ICoder<byte, byte>, ICoder<byte[], byte[]>, IDecoder<byte, byte>
+    public class CapitalConversion : ICoder<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>, IDecoder<byte, byte>
     {
         public Decoder Decoder { get; }
         public Encoder Encoder { get; }
@@ -32,7 +33,7 @@ namespace BWDPerf.Transforms.Tools
                 skippedBytes.Enqueue(symbol);
                 if (written == 0)
                     continue;
-                
+
                 for (int i = 0; i < written; i++)
                 {
                     if (char.IsUpper(charBuffer[i]))
@@ -61,7 +62,7 @@ namespace BWDPerf.Transforms.Tools
             this.Encoder.Reset();
         }
 
-        public async IAsyncEnumerable<byte[]> Encode(IAsyncEnumerable<byte[]> input)
+        public async IAsyncEnumerable<ReadOnlyMemory<byte>> Encode(IAsyncEnumerable<ReadOnlyMemory<byte>> input)
         {
             byte[] buffer = new byte[1];
             byte[] lowerCaseBytes = new byte[this.MaxByteCount];
@@ -70,14 +71,15 @@ namespace BWDPerf.Transforms.Tools
             await foreach (var block in input)
             {
                 var list = new List<byte>();
-                foreach (var symbol in block)
+                for (int x = 0; x < block.Length; x++)
                 {
+                    var symbol = block.Span[x];
                     buffer[0] = symbol;
                     var written = this.Decoder.GetChars(buffer, 0, 1, charBuffer, 0);
                     skippedBytes.Enqueue(symbol);
                     if (written == 0)
                         continue;
-                    
+
                     for (int i = 0; i < written; i++)
                     {
                         if (char.IsUpper(charBuffer[i]))
