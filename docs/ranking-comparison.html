@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Comparison of entropy ranking and naive ranking</title>
+        <style>
+</style>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.10.2/dist/katex.min.css" integrity="sha384-yFRtMMDnQtDRO8rLpMIKrtPCD5jdktao2TV19YiZYWMDkUR5GQZR/NOVTdquEx1j" crossorigin="anonymous">
+<link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item { list-style-type: none; } .task-list-item-checkbox { margin-left: -20px; vertical-align: middle; }
+</style>
+        
+        <script src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+        
+    </head>
+    <body class="vscode-body vscode-light">
+        <h1 id="comparison-of-entropy-ranking-and-naive-ranking">Comparison of entropy ranking and naive ranking</h1>
+<p>The two ranking functions we'll compare are:</p>
+<p><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mn>1</mn></msub><mo stretchy="false">(</mo><mi>w</mi><mo stretchy="false">)</mo><mo>=</mo><mo stretchy="false">(</mo><mi>w</mi><mi mathvariant="normal">.</mi><mi>L</mi><mi>e</mi><mi>n</mi><mi>g</mi><mi>t</mi><mi>h</mi><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo><mo>∗</mo><mo stretchy="false">(</mo><mi>w</mi><mi mathvariant="normal">.</mi><mi>C</mi><mi>o</mi><mi>u</mi><mi>n</mi><mi>t</mi><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">r_1(w) = (w.Length - 1) * (w.Count - 1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mord">.</span><span class="mord mathdefault">L</span><span class="mord mathdefault">e</span><span class="mord mathdefault">n</span><span class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mord mathdefault">t</span><span class="mord mathdefault">h</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mord">.</span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mord mathdefault">o</span><span class="mord mathdefault">u</span><span class="mord mathdefault">n</span><span class="mord mathdefault">t</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></p>
+<p><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mn>2</mn></msub><mo stretchy="false">(</mo><mi>w</mi><mo stretchy="false">)</mo><mo>=</mo><mi>C</mi><mo>∗</mo><mi>d</mi><mi>H</mi><mo stretchy="false">(</mo><mi>w</mi><mo stretchy="false">)</mo><mo>+</mo><mi>H</mi><mo>∗</mo><mi>d</mi><mi>C</mi><mo stretchy="false">(</mo><mi>w</mi><mo stretchy="false">)</mo><mo>+</mo><mi>d</mi><mi>C</mi><mo stretchy="false">(</mo><mi>w</mi><mo stretchy="false">)</mo><mo>∗</mo><mi>d</mi><mi>H</mi><mo stretchy="false">(</mo><mi>w</mi><mo stretchy="false">)</mo><mo>−</mo><mi>d</mi><mi>i</mi><mi>c</mi><mi>t</mi><mo stretchy="false">(</mo><mi>w</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">r_2(w) = C * dH(w) + H * dC(w) + dC(w) * dH(w) - dict(w)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault">d</span><span class="mord mathdefault" style="margin-right:0.08125em;">H</span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathdefault" style="margin-right:0.08125em;">H</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault">d</span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault">d</span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault">d</span><span class="mord mathdefault" style="margin-right:0.08125em;">H</span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault">d</span><span class="mord mathdefault">i</span><span class="mord mathdefault">c</span><span class="mord mathdefault">t</span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.02691em;">w</span><span class="mclose">)</span></span></span></span></p>
+<h1 id="file-size-and-run-time">File size and run time</h1>
+<p>Testing on book1 (768'771) with max word size set to 32:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Entropy ranking</th>
+<th>Naive ranking</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Time</td>
+<td>32:39 min</td>
+<td>45:52 min</td>
+</tr>
+<tr>
+<td>Size estimation</td>
+<td>365'182</td>
+<td>393'222</td>
+</tr>
+<tr>
+<td>Size</td>
+<td>488'956</td>
+<td>582'235</td>
+</tr>
+<tr>
+<td>Dictionary size</td>
+<td>764 words</td>
+<td>1185 words</td>
+</tr>
+<tr>
+<td>Dictionary length</td>
+<td>2'495 bytes</td>
+<td>3'565 bytes</td>
+</tr>
+<tr>
+<td>Stream size</td>
+<td>389'165 symbols</td>
+<td>420'848 symbols</td>
+</tr>
+<tr>
+<td>Ranking time</td>
+<td>00:11.7 sec</td>
+<td>00:03.1 sec</td>
+</tr>
+<tr>
+<td>Counting time</td>
+<td>32:10 min</td>
+<td>45:52 min</td>
+</tr>
+<tr>
+<td>Counting time per word</td>
+<td>00:02.52 sec</td>
+<td>00:02.32 sec</td>
+</tr>
+</tbody>
+</table>
+<p><em>* Size - words are assigned a static length code of log(dictSize)</em><br>
+<em>* Size estimation - estimation after processing with an order0 entropy coder.</em><br>
+<em>* Ranking time - total time spent ranking.</em><br>
+<em>* Counting time - total time spent counting.</em><br>
+<em>* Counting time per word - average time spent counting per word in the dictionary.</em></p>
+<h3 id="conclusions">Conclusions</h3>
+<p>File size is reduced with and without an entropy coder, when using the new ranking.<br>
+Run time is also reduced, but this is because of the near constant counting time per word in the dictionary in both cases multiplied by less words in the dictionary.<br>
+The increase in time spent ranking is compared to the decrease in counting time.</p>
+<p>Going forward, it seems an order-1 probability estimation won't slow ranking down too much.<br>
+Optimizations must be made in the counting - i.e. re-counting may sometimes be slower than a full count, especially in the beginning.</p>
+<h1 id="quality-of-words">Quality of words</h1>
+<p>Let's check the first 20 words of both dictionaries:</p>
+<table>
+<thead>
+<tr>
+<th>Id</th>
+<th>Entropy ranking</th>
+<th>Naive ranking</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>&quot; the&quot;</code></td>
+<td><code>&quot; the&quot;</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>&quot; and &quot;</code></td>
+<td><code>&quot;e &quot;</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>&quot;ing&quot;</code></td>
+<td><code>&quot; a&quot;</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>&quot; of&quot;</code></td>
+<td><code>&quot;in&quot;</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>&quot;er&quot;</code></td>
+<td><code>&quot;d &quot;</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>&quot; to &quot;</code></td>
+<td><code>&quot;er&quot;</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>&quot; w&quot;</code></td>
+<td><code>&quot;t &quot;</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>&quot;ou&quot;</code></td>
+<td><code>&quot;s &quot;</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>&quot;Bathsheba&quot;</code></td>
+<td><code>&quot;th&quot;</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>&quot; that&quot;</code></td>
+<td><code>&quot;ou&quot;</code></td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>&quot;ed&quot;</code></td>
+<td><code>&quot;on&quot;</code></td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>&quot; a&quot;</code></td>
+<td><code>&quot; s&quot;</code></td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>&quot;in&quot;</code></td>
+<td><code>&quot;en&quot;</code></td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>&quot; s&quot;</code></td>
+<td><code>&quot;, &quot;</code></td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>&quot;th&quot;</code></td>
+<td><code>&quot;an&quot;</code></td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>&quot;on&quot;</code></td>
+<td><code>&quot;to&quot;</code></td>
+</tr>
+<tr>
+<td>17</td>
+<td><code>&quot; h&quot;</code></td>
+<td><code>&quot;y &quot;</code></td>
+</tr>
+<tr>
+<td>18</td>
+<td><code>&quot; be&quot;</code></td>
+<td><code>&quot;re&quot;</code></td>
+</tr>
+<tr>
+<td>19</td>
+<td><code>&quot; --&quot;</code></td>
+<td><code>&quot; h&quot;</code></td>
+</tr>
+<tr>
+<td>20</td>
+<td><code>&quot;re&quot;</code></td>
+<td><code>&quot;or&quot;</code></td>
+</tr>
+</tbody>
+</table>
+<p>Entropy ranking ranks common prefixes and suffixes higher.</p>
+<p>Here's on the length:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Entropy ranking</th>
+<th>Naive ranking</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Average word size in top 20</td>
+<td>3.1000</td>
+<td>2.1000</td>
+</tr>
+<tr>
+<td>Average word size</td>
+<td>2.2604</td>
+<td>2.0050</td>
+</tr>
+<tr>
+<td>Max word size</td>
+<td>27</td>
+<td>11</td>
+</tr>
+<tr>
+<td>Character coverage of top 20 words</td>
+<td>33.96%</td>
+<td>40.74%</td>
+</tr>
+<tr>
+<td>Symbol coverage of top 20 words</td>
+<td>26.76%</td>
+<td>35.32%</td>
+</tr>
+</tbody>
+</table>
+<p>It seems that the more evenly distributed words are, the better compression is.
+Evenly distributed words are caused by words that contain roughly the same information.</p>
+
+    </body>
+    </html>
