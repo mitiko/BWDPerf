@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+    <path d="M0 100 L 200 50 L 400 100 Z" fill="rgb(255, 60, 60)"/>
+    <path d="M0 100 L 200 150 L 400 100 Z" fill="rgb(225, 0, 0)"/>
+    <path d="M113.4 50 L 200 0 L 286.6 50 A 100 100 0 0 0 286.6 150 L 200 200 L 113.4 150 A 100 100 0 0 0 113.4 50" stroke="rgb(240, 30, 30)" fill="white"/>
+    <path d="M200 30 A 150 150 0 0 0 200 170 A 150 150 0 0 0 200 30" fill="rgb(240, 30, 30)" transform="rotate(20 200 100)"/>
+</svg>
