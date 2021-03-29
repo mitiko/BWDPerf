@@ -37,9 +37,10 @@ public class BWDBenchmark
     public async Task Compress()
     {
         var options = new Options(maxWordSize: 32);
+        // var ranking = new Order1EntropyRanking();
         var ranking = new EntropyRanking();
         // var ranking = new NaiveRanking(options);
-        var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/calgary/book1", 100_000_000)
+        var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/book11", 100_000_000)
             // .ToCoder(new CapitalConversion())
             .ToCoder(new BWDEncoder(options, ranking))
             .ToCoder<BWDBlock, BWDBlock>(new MeasureEntropy())

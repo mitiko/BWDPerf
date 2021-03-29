@@ -1,17 +1,28 @@
 using System;
 using System.Collections.Generic;
+using BWDPerf.Interfaces;
 using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD.Counting
 {
-    public class DynamicWordCounting
+    public class DynamicWordCounting : IBWDMatching
     {
         public Dictionary<Word, int> Counts { get; set; } = new();
+        public ReadOnlyMemory<byte> Buffer { get; }
+        public SuffixArray SA { get; }
+        public BitVector BitVector { get; }
 
-        public void CountAllRepeatedWords(ReadOnlyMemory<byte> buffer, SuffixArray SA, BitVector bitVector, int maxWordSize)
+        public DynamicWordCounting(ReadOnlyMemory<byte> buffer, SuffixArray SA, BitVector bitVector)
         {
-            var LCP = new LCPArray(buffer, SA);
+            this.Buffer = buffer;
+            this.SA = SA;
+            this.BitVector = bitVector;
+        }
+
+        public void CountAllRepeatedWords(int maxWordSize)
+        {
+            var LCP = new LCPArray(Buffer, SA);
             var matches = new List<int>[maxWordSize];
             for (int i = 0; i < matches.Length; i++)
                 matches[i] = new List<int>();
@@ -21,7 +32,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
                 var curr = SA[i];
 
                 // Matched
-                for (int k = 0; k < maxWordSize && curr + k < buffer.Length; k++)
+                for (int k = 0; k < maxWordSize && curr + k < Buffer.Length; k++)
                     matches[k].Add(curr);
 
                 int matchLength = i == LCP.Length ? 0 : LCP[i];
@@ -30,7 +41,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
                 for (int k = matchLength; k < maxWordSize; k++)
                 {
                     if (matches[k].Count == 0) break;
-                    var (word, count) = CountWord(matches[k], k+1, bitVector);
+                    var (word, count) = CountWord(matches[k], k+1, BitVector);
                     if (count > 1)
                         this.Counts.Add(word, count);
                     matches[k].Clear();
@@ -38,14 +49,14 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
             }
         }
 
-        public void RecountSelectedWord(Word word, ReadOnlyMemory<byte> buffer, SuffixArray SA, BitVector bitVector, int maxWordSize)
+        public void RecountSelectedWord(Word word, int maxWordSize)
         {
             // Parse - get locations
             // Get adjacent words
             // Set bitvector to 0s for our word == splitting
             // Count every word in the adjacent list and upate the dictionarys
-            var matches = SA.Search(buffer, buffer.Slice(word.Location, word.Length));
-            var locations = Parse(matches, word.Length, bitVector);
+            var matches = SA.Search(Buffer, Buffer.Slice(word.Location, word.Length));
+            var locations = Parse(matches, word.Length, BitVector);
             if (locations.Count == 0)
             {
                 Console.WriteLine($"Matches: {matches.Length}");
@@ -67,7 +78,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
                     if (start < 0) continue;
                     for (int end = start + maxWordSize - 1; end >= loc; end--)
                     {
-                        if (end >= buffer.Length) continue;
+                        if (end >= Buffer.Length) continue;
                         adjacentWords.Add(new Word(start, end - start + 1));
                     }
                 }
@@ -77,7 +88,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
                 {
                     for (int end = start + maxWordSize - 1; end > endLoc; end--)
                     {
-                        if (end >= buffer.Length) continue;
+                        if (end >= Buffer.Length) continue;
                         adjacentWords.Add(new Word(start, end - start + 1));
                     }
                 }
@@ -96,8 +107,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Counting
 
             foreach (var adjWord in adjacentWords)
             {
-                var adjMatches = SA.Search(buffer, buffer.Slice(adjWord.Location, adjWord.Length));
-                var (firstAdjWord, count) = CountWord(adjMatches, adjWord.Length, bitVector);
+                var adjMatches = SA.Search(Buffer, Buffer.Slice(adjWord.Location, adjWord.Length));
+                var (firstAdjWord, count) = CountWord(adjMatches, adjWord.Length, BitVector);
                 if (count == 0)
                     this.Counts.Remove(firstAdjWord);
                 else
