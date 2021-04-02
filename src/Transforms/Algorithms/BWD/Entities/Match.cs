@@ -7,7 +7,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
         // Count - how many matches before parsing
         public int Count { get; set; }
         // Length of word
-        public int Length { get; set; }
+        public int Length { get; }
 
         public Match(int index, int count, int length)
         {

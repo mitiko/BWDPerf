@@ -1,8 +1,5 @@
 using System;
-using System.Linq;
 using BWDPerf.Interfaces;
-using BWDPerf.Tools;
-using BWDPerf.Transforms.Algorithms.BWD.Counting;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD
@@ -39,17 +36,19 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     this.Ranking.Rank(match);
                 rankingTime += timer.Elapsed; timer.Restart();
 
-                var word = this.Ranking.GetTopRankedWords()[0].Word;
+                var rankedWord = this.Ranking.GetTopRankedWords()[0];
+                var word = rankedWord.Word;
                 if (word.Equals(Word.Empty))
                     break;
                 dictionary[i] = buffer.Slice(word.Location, word.Length).ToArray();
-                PrintWord(word);
+                PrintWord(rankedWord);
 
-                this.MatchFinder.UpdateState(word);
+                this.BWDIndex.MarkWordAsUnavailable(word);
                 matchingTime += timer.Elapsed; timer.Restart();
             }
 
             // If there are no more good words, add the remaining of the individual symbols to the dictionary
+            // TODO: Extract this in BWDIndex.ExtractSingleCharacters or smth.
             for (int i = dictionary.Count; !this.BWDIndex.BitVector.IsEmpty(); i++)
             {
                 var symbol = Word.Empty;
@@ -58,8 +57,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     if (this.BWDIndex.BitVector[j])
                     {
                         symbol = new Word(j, 1);
-                        var locations = this.BWDIndex.SA.Search(buffer, buffer.Slice(j, 1));
-                        for (int l = 0; l < locations.Length; l++) this.BWDIndex.BitVector[locations[l]] = false;
+                        this.BWDIndex.MarkWordAsUnavailable(symbol);
                         break;
                     }
                 }
@@ -73,16 +71,19 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             return dictionary;
         }
 
-        private void PrintWord(Word word)
+        private void PrintWord(RankedWord rw)
         {
             var str = "";
+            var loc = rw.Word.Location;
+            var len = rw.Word.Length;
             var bytes = this.BWDIndex.Buffer
-                .Slice(word.Location, word.Length)
+                .Slice(loc, len)
                 .ToArray()
                 .AsSpan();
             foreach (var symbol in bytes)
                 str += (char) symbol;
-            Console.WriteLine($"word -- '{str}'; {word.Location} {word.Length}");
+            var count = rw.Rank / (len - 1) + 1;
+            Console.WriteLine($"word -- '{str}'; ({loc}, {len}) -- {count}");
         }
     }
 }

@@ -8,6 +8,7 @@ using BenchmarkDotNet.Running;
 using BWDPerf.Architecture;
 using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD;
+using BWDPerf.Transforms.Algorithms.BWD.Matching;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 using BWDPerf.Transforms.Algorithms.BWD.Ranking;
 using BWDPerf.Transforms.Serializers;
@@ -36,13 +37,13 @@ public class BWDBenchmark
     [Benchmark]
     public async Task Compress()
     {
-        var options = new Options(maxWordSize: 32);
         // var ranking = new Order1EntropyRanking();
-        var ranking = new EntropyRanking();
-        // var ranking = new NaiveRanking(options);
+        // var ranking = new EntropyRanking();
+        var ranking = new NaiveRanking(8, 12);
+        var matching = new LCPMatchFinder(12);
         var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/book11", 100_000_000)
             // .ToCoder(new CapitalConversion())
-            .ToCoder(new BWDEncoder(options, ranking))
+            .ToCoder(new BWDEncoder(ranking, matching))
             .ToCoder<BWDBlock, BWDBlock>(new MeasureEntropy())
             .ToCoder(new BlockToBytes())
             .Serialize(new SerializeToFile("encoded"));

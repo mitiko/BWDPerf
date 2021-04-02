@@ -7,6 +7,7 @@ namespace BWDPerf.Tools
         private int[] SA { get; }
 
         public int this[int index] => this.SA[index];
+        public int[] this[Range range] => this.SA[range];
         public int Length => this.SA.Length;
 
         public SuffixArray(ReadOnlyMemory<byte> data, int maxWord = -1)

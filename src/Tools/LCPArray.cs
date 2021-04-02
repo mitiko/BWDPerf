@@ -14,7 +14,7 @@ namespace BWDPerf.Tools
         {
             var T = buffer.Span;
             int n = T.Length;
-            LCP = new int[n-1];
+            LCP = new int[n];
 
             var SAinv = new int[n];
             for (int i = 0; i < n; i++)

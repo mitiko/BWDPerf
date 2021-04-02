@@ -9,6 +9,5 @@ namespace BWDPerf.Interfaces
 
         public void Initialize(BWDIndex BWDIndex);
         public IEnumerable<Match> GetMatches();
-        public void UpdateState(Word chosenWord);
     }
 }

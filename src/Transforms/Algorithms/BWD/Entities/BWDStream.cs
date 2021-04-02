@@ -14,7 +14,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
 
         public BWDStream(ReadOnlyMemory<byte> buffer, BWDictionary dictionary)
         {
-            // TODO: without s token, we can do parsing in O(n), by finding the first word that matches 
+            // TODO: without s token, we can do parsing in O(n), by finding the first word that matches
             // NO TODO: Use the FM-index to do parsing in O(n)
             var data = new int[buffer.Length];
             for (int k = 0; k < data.Length; k++)
