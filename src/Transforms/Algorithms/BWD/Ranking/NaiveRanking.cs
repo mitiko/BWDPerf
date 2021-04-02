@@ -13,7 +13,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         private Dictionary<int, Dictionary<int, double>> LearnedRanks { get; set; }
         public BWDIndex BWDIndex { get; private set; }
 
-        public NaiveRanking(int bpc = 8, int maxWordSize = 32)
+        public NaiveRanking(int maxWordSize, int bpc = 8)
         {
             this.BPC = bpc;
             this.BestWord = InitialWord;

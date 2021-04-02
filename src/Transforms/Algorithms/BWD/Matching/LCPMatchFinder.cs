@@ -6,12 +6,18 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
 {
     public class LCPMatchFinder : IBWDMatching
     {
-        public int MaxWordSize { get; }
+        public int MaxWordSize { get; private set; } = 4;
         public BWDIndex BWDIndex { get; private set; }
 
-        public LCPMatchFinder(int maxWordSize = 32) => this.MaxWordSize = maxWordSize;
-
-        public void Initialize(BWDIndex BWDIndex) => this.BWDIndex = BWDIndex;
+        public void Initialize(BWDIndex BWDIndex)
+        {
+            this.BWDIndex = BWDIndex;
+            for (int i = 0; i < this.BWDIndex.LCP.Length; i++)
+            {
+                if (this.BWDIndex.LCP[i] > this.MaxWordSize) this.MaxWordSize = this.BWDIndex.LCP[i];
+            }
+            System.Console.WriteLine($"Max size repeated word: {this.MaxWordSize}");
+        }
 
         public IEnumerable<Match> GetMatches()
         {
@@ -35,8 +41,5 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
                 }
             }
         }
-
-        // TODO: Don't parse when the word can't overlap with itself - i.e. for most text
-        // Also maybe write better parsing, since genetic data will overlap with itself a lot!
     }
 }

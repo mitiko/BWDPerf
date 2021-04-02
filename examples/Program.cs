@@ -40,7 +40,7 @@ public class BWDBenchmark
         // var ranking = new Order1EntropyRanking();
         // var ranking = new EntropyRanking();
         var ranking = new NaiveRanking(8, 12);
-        var matching = new LCPMatchFinder(12);
+        var matching = new LCPMatchFinder();
         var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/book11", 100_000_000)
             // .ToCoder(new CapitalConversion())
             .ToCoder(new BWDEncoder(ranking, matching))

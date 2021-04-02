@@ -22,16 +22,16 @@ namespace BWDPerf.Tests
 
         [TestMethod]
         public async Task OneDictionary() =>
-            await RunBWDWithOptions(maxWordSize: 12, bufferSize: 100_000); // 100KB
+            await RunBWDWithOptions(bufferSize: 100_000); // 100KB
 
         [TestMethod]
         public async Task MultipleDictionaries() =>
-            await RunBWDWithOptions(maxWordSize: 12, bufferSize: 1_000); // 1KB
+            await RunBWDWithOptions(bufferSize: 1_000); // 1KB
 
-        private async Task RunBWDWithOptions(int maxWordSize, int bufferSize)
+        private async Task RunBWDWithOptions(int bufferSize)
         {
-            var ranking = new NaiveRanking(maxWordSize: maxWordSize);
-            var matching = new LCPMatchFinder(maxWordSize: maxWordSize);
+            var ranking = new NaiveRanking(150);
+            var matching = new LCPMatchFinder();
             var compressTask = new BufferedFileSource(_enwik4, bufferSize)
                 .ToCoder(new BWDEncoder(ranking, matching))
                 .ToCoder(new BlockToBytes())
