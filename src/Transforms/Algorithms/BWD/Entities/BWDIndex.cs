@@ -5,13 +5,16 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
 {
     public class BWDIndex
     {
+        public int Length { get; }
         public SuffixArray SA { get; }
         public BitVector BitVector { get; }
         public ReadOnlyMemory<byte> Buffer { get; }
         public LCPArray LCP { get; set; }
+        public byte this[int index] => this.Buffer.Span[index];
 
         public BWDIndex(ReadOnlyMemory<byte> buffer)
         {
+            this.Length = buffer.Length;
                 var timer = System.Diagnostics.Stopwatch.StartNew();
             this.SA = new SuffixArray(buffer);
                 Console.WriteLine($"Suffix array took: {timer.Elapsed}"); timer.Restart();
@@ -52,6 +55,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
             return this.Parse(locations, match.Length);
         }
 
+        // TODO: Don't parse when the word can't overlap with itself - i.e. for most text
+        // Also maybe write better parsing, since genetic data will overlap with itself a lot!
         public int[] Parse(int[] rawSortedLocations, int wordLength)
         {
             var results = new int[rawSortedLocations.Length];

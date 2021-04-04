@@ -6,7 +6,6 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using BWDPerf.Architecture;
-using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD;
 using BWDPerf.Transforms.Algorithms.BWD.Matching;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
@@ -14,7 +13,6 @@ using BWDPerf.Transforms.Algorithms.BWD.Ranking;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
-
 
 class Program
 {
@@ -28,7 +26,6 @@ class Program
         timer.Restart();
         await new BWDBenchmark().Decompress();
         Console.WriteLine($"Decompression took: {timer.Elapsed}");
-
     }
 }
 
@@ -37,9 +34,9 @@ public class BWDBenchmark
     [Benchmark]
     public async Task Compress()
     {
-        // var ranking = new Order1EntropyRanking();
+        var ranking = new Order1EntropyRanking();
         // var ranking = new EntropyRanking();
-        var ranking = new NaiveRanking(8, 12);
+        // var ranking = new NaiveRanking(8, 12);
         var matching = new LCPMatchFinder();
         var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/book11", 100_000_000)
             // .ToCoder(new CapitalConversion())

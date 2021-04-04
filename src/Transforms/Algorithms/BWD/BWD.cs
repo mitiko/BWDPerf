@@ -18,23 +18,20 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
         internal BWDictionary CalculateDictionary(ReadOnlyMemory<byte> buffer)
         {
+            // Initialize the index
             this.BWDIndex = new BWDIndex(buffer);
+            // Initialize the match finder and ranking
+            this.MatchFinder.Initialize(this.BWDIndex);
+            this.Ranking.Initialize(this.BWDIndex);
 
             var timer = System.Diagnostics.Stopwatch.StartNew();
-            var rankingTime = new TimeSpan();
-            var matchingTime = new TimeSpan();
 
-            this.Ranking.Initialize(this.BWDIndex);
-            rankingTime += timer.Elapsed; timer.Restart();
-            this.MatchFinder.Initialize(this.BWDIndex);
-            matchingTime += timer.Elapsed; timer.Restart();
-
+            // Initialize the dictionary
             var dictionary = new BWDictionary();
             for (int i = 0; !this.BWDIndex.BitVector.IsEmpty(); i++)
             {
                 foreach (var match in this.MatchFinder.GetMatches())
                     this.Ranking.Rank(match);
-                rankingTime += timer.Elapsed; timer.Restart();
 
                 var rankedWord = this.Ranking.GetTopRankedWords()[0];
                 var word = rankedWord.Word;
@@ -44,8 +41,11 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 PrintWord(rankedWord);
 
                 this.BWDIndex.MarkWordAsUnavailable(word);
-                matchingTime += timer.Elapsed; timer.Restart();
             }
+
+            var elapsedTime = timer.Elapsed;
+            Console.WriteLine($"Dict size is {dictionary.Count}");
+            Console.WriteLine($"Time to compute dictionary: {elapsedTime}; Avg per word: {elapsedTime / dictionary.Count}");
 
             // If there are no more good words, add the remaining of the individual symbols to the dictionary
             // TODO: Extract this in BWDIndex.ExtractSingleCharacters or smth.
@@ -64,10 +64,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 dictionary[i] = buffer.Slice(symbol.Location, symbol.Length);
             }
 
-            Console.WriteLine($"Dict size is {dictionary.Count}");
-            Console.WriteLine($"Total ranking time: {rankingTime}; Avg: {rankingTime / dictionary.Count}");
-            Console.WriteLine($"Total counting time: {matchingTime}; Avg: {matchingTime / dictionary.Count}");
-
             return dictionary;
         }
 
@@ -82,8 +78,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 .AsSpan();
             foreach (var symbol in bytes)
                 str += (char) symbol;
-            var count = rw.Rank / (len - 1) + 1;
-            Console.WriteLine($"word -- '{str}'; ({loc}, {len}) -- {count}");
+            Console.WriteLine($"word -- '{str}'; ({loc}, {len}) -- {rw.Rank}");
         }
     }
 }

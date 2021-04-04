@@ -35,7 +35,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
                 // Everything up to LCP[i] matches the next entry. The rest we output and reset.
                 for (int k = this.BWDIndex.LCP[i]; k < this.MaxWordSize; k++)
                 {
-                    if (matches[k].Count > 1) yield return matches[k];
+                    if (matches[k].Count > 1 && matches[k].Index + matches[k].Length <= this.BWDIndex.Length)
+                        yield return matches[k];
                     matches[k].Index = i + 1;
                     matches[k].Count = 0;
                 }
