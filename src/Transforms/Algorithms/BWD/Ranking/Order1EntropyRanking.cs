@@ -44,6 +44,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         {
             if (match.Length < 2) return; // Rank of single characters is 0
             var locs = this.BWDIndex.Parse(match); // Get matching locations
+            var loc = this.BWDIndex.SA[match.Index];
             if (locs.Length < 2) return; // Must locate match at at least 2 locations to get gains
 
             // Copy the model
@@ -52,11 +53,11 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             // Update order0 symbol counts
             model.Order0.Add(this.WordIndex, locs.Length);
             for (int s = 0; s < match.Length; s++)
-                model.Order0.SubstractMany(this.BWDIndex[match.Index+s], locs.Length); // For now words can only cover single characters, not other words
+                model.Order0.SubstractMany(this.BWDIndex[loc+s], locs.Length); // For now words can only cover single characters, not other words
             // Update order1 symbol counts (done in 3 parts - symbols inside word, contexts of word, word is context)
             // 1) Update symbols inside word
             for (int s = 0; s < match.Length - 1; s++)
-                model.Order1[this.BWDIndex[match.Index+s]].Substract(this.BWDIndex[match.Index+s+1]);
+                model.Order1[this.BWDIndex[loc+s]].Substract(this.BWDIndex[loc+s+1]);
             // 2) Update contexts
             for (int i = locs[0] == 0 ? 1 : 0; i < locs.Length; i++)
             {
@@ -68,7 +69,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             for (int i = locs.Length - ((locs[locs.Length-1] == this.BWDIndex.Length - match.Length) ? 2 : 1); i >= 0 ; i--)
             {
                 model.Order1[this.WordIndex].Add(this.BWDIndex[locs[i]+match.Length]);
-                model.Order1[this.BWDIndex[match.Index+match.Length-1]].Substract(this.BWDIndex[locs[i]+match.Length]);
+                model.Order1[this.BWDIndex[loc+match.Length-1]].Substract(this.BWDIndex[locs[i]+match.Length]);
             }
             // NOTE: 2) and 3) do a boundaries check just once, not at each location because the locations are sorted
             // If the locations are not sorted, we have to do the boundaries check for each location, not just once
@@ -79,7 +80,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 
             if (rank > this.BestWord.Rank)
             {
-                this.BestWord = new RankedWord(new Word(this.BWDIndex.SA[match.Index], match.Length), rank);
+                this.BestWord = new RankedWord(new Word(loc, match.Length), rank);
                 this.BestWordModel = model;
                 this.Ew = encodedSize;
                 this.d = dictOverhead;

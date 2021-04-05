@@ -28,7 +28,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             var symbols = new OccurenceDictionary<byte>();
             double entropy = 0;
             for (int i = 0; i < n; i++)
-                symbols.Add(this.BWDIndex.Buffer.Span[i]);
+                symbols.Add(this.BWDIndex[i]);
             foreach (var kvp in symbols)
                 this.FreqTable.Add(kvp.Key, kvp.Value / n);
             foreach (var kvp in this.FreqTable)
@@ -52,7 +52,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             double deltaH = pw * Math.Log2(pw);
             for (int s = 0; s < match.Length; s++)
             {
-                double px = this.FreqTable[this.BWDIndex.Buffer.Span[location + s]];
+                double px = this.FreqTable[this.BWDIndex[location + s]];
                 double pChange = px - pw;
                 deltaH += pChange * Math.Log2(pChange) - px * Math.Log2(px);
             }
