@@ -44,8 +44,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         {
             if (match.Length < 2) return; // Rank of single characters is 0
             var locs = this.BWDIndex.Parse(match); // Get matching locations
-            var loc = this.BWDIndex.SA[match.Index];
             if (locs.Length < 2) return; // Must locate match at at least 2 locations to get gains
+            var loc = locs[0];
 
             // Copy the model
             var model = new Statistics(this.Model);
@@ -57,12 +57,12 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             // Update order1 symbol counts (done in 3 parts - symbols inside word, contexts of word, word is context)
             // 1) Update symbols inside word
             for (int s = 0; s < match.Length - 1; s++)
-                model.Order1[this.BWDIndex[loc+s]].Substract(this.BWDIndex[loc+s+1]);
+                model.Order1[this.BWDIndex[loc+s]].SubstractMany(this.BWDIndex[loc+s+1], locs.Length);
             // 2) Update contexts
-            for (int i = locs[0] == 0 ? 1 : 0; i < locs.Length; i++)
+            for (int i = ((locs[0] == 0) ? 1 : 0); i < locs.Length; i++)
             {
                 model.Order1[this.BWDIndex[locs[i]-1]].Add(this.WordIndex);
-                model.Order1[this.BWDIndex[locs[i]-1]].Substract(this.BWDIndex[locs[i]]);
+                model.Order1[this.BWDIndex[locs[i]-1]].Substract(this.BWDIndex[loc]);
             }
             // 3) Update when the words is a context
             model.Order1.Add(this.WordIndex, new OccurenceDictionary<ushort>());
@@ -103,7 +103,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
                 Console.WriteLine($"[ESTIMATE] Uncompressed dictionary size estimated: {D}");
                 return new List<RankedWord>() { RankedWord.Empty };
             }
-            Console.WriteLine($"E: {E}; D: {D}");
+            Console.WriteLine($"E: {E}; d: {d}");
             return new List<RankedWord>() { word };
         }
 
@@ -134,6 +134,27 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
                         var pxy = count / cn;
                         entropy -= py * pxy * Math.Log2(pxy);
                     }
+
+                    // This is a mix of order0 and order1 encoding, always choosing the better one
+                    // In practise these predictions are impossible for the entropy coder afterwards
+                    // Just testing things out
+                    // foreach (var kvp in this.Order1[context])
+                    // {
+                    //     var pxy = kvp.Value / cn;
+                    //     try
+                    //     {
+                    //         var px = this.Order0[kvp.Key] / n;
+                    //         entropy -= py * Math.Max(pxy * Math.Log2(pxy), px * Math.Log2(px));
+                    //     }
+                    //     catch
+                    //     {
+                    //         // This is a problem of issue #32
+                    //         Console.WriteLine($"context is: {context}");
+                    //         Console.WriteLine($"context count is: {this.Order0[context]}");
+                    //         Console.WriteLine($"count is: {kvp.Value}");
+                    //         Console.WriteLine($"key is: {kvp.Key}");
+                    //     }
+                    // }
                 }
                 return entropy;
             }
