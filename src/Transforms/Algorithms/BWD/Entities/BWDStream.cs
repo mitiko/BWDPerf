@@ -17,8 +17,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
             // TODO: without s token, we can do parsing in O(n), by finding the first word that matches
             // NO TODO: Use the FM-index to do parsing in O(n)
             var data = new int[buffer.Length];
-            for (int k = 0; k < data.Length; k++)
-                data[k] = -1;
+            data.AsSpan().Fill(-1);
 
             for (int i = 0; i < dictionary.Count; i++)
             {
