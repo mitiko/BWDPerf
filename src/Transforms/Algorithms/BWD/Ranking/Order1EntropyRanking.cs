@@ -35,7 +35,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             for (int i = 0; i < n-1; i++)
                 this.Model.Order1[this.BWDIndex[i]].Add(this.BWDIndex[i+1]);
 
-            double o0Entropy = Model.GetOrder0Entropy(), o1Entropy = Model.GetEntropy();
+            double o0Entropy = this.Model.GetOrder0Entropy(), o1Entropy = this.Model.GetEntropy();
             Console.WriteLine($"-> Inititial entropy: o0: {o0Entropy}, o1: {o1Entropy}");
             this.E = o1Entropy * this.BWDIndex.Length;
         }
@@ -75,7 +75,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             // If the locations are not sorted, we have to do the boundaries check for each location, not just once
 
             double dictOverhead = 8 * (match.Length + 1);
-            double encodedSize = model.GetEntropy() * model.Order0.Sum() + dictOverhead;
+            double encodedSize = model.GetEntropy() * model.Order0.Sum();
             double rank = this.E - encodedSize - dictOverhead;
 
             if (rank > this.BestWord.Rank)
