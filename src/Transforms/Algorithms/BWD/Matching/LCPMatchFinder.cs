@@ -6,39 +6,37 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
 {
     public class LCPMatchFinder : IBWDMatching
     {
-        public int MaxWordSize { get; private set; } = 4;
         public BWDIndex BWDIndex { get; private set; }
 
-        public void Initialize(BWDIndex BWDIndex)
-        {
-            this.BWDIndex = BWDIndex;
-            for (int i = 0; i < this.BWDIndex.Length; i++)
-            {
-                if (this.BWDIndex.LCP[i] > this.MaxWordSize) this.MaxWordSize = this.BWDIndex.LCP[i];
-            }
-            System.Console.WriteLine($"Max size repeated word: {this.MaxWordSize}");
-        }
+        public void Initialize(BWDIndex BWDIndex) => this.BWDIndex = BWDIndex;
 
         public IEnumerable<Match> GetMatches()
         {
             int n = this.BWDIndex.Length;
-            var matches = new Match[this.MaxWordSize];
-            for (int i = 0; i < matches.Length; i++)
-                matches[i] = new Match(0, 0, i+1);
+            var matches = new Stack<Match>();
 
             for (int i = 0; i < n; i++)
             {
-                // New matching word, increase the count.
-                for (int k = 0; k < this.MaxWordSize; k++)
-                    matches[k].Count++;
-
-                // Everything up to LCP[i] matches the next entry. The rest we output and reset.
-                for (int k = this.BWDIndex.LCP[i]; k < this.MaxWordSize; k++)
+                var lcp = this.BWDIndex.LCP[i];
+                if (matches.Count == 0)
                 {
-                    if (matches[k].Count > 1 && matches[k].Index + matches[k].Length <= n)
-                        yield return matches[k];
-                    matches[k].Index = i + 1;
-                    matches[k].Count = 0;
+                    if (lcp >= 2) matches.Push(new Match(i, 0, lcp));
+                    continue;
+                }
+                while (matches.TryPeek(out var match))
+                {
+                    if (lcp < match.Length)
+                    {
+                        var m = matches.Pop();
+                        m.Count = i - m.Index + 1;
+                        yield return m;
+                    }
+                    else if (lcp > match.Length)
+                    {
+                        matches.Push(new Match(i, 0, lcp));
+                        break;
+                    }
+                    else break;
                 }
             }
         }
