@@ -8,9 +8,12 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
         public int Length { get; }
         public SuffixArray SA { get; }
         public BitVector BitVector { get; }
+        public LCPArray LCP { get; }
         public ReadOnlyMemory<byte> Buffer { get; }
-        public LCPArray LCP { get; set; }
-        public byte this[int index] => this.Buffer.Span[index];
+        private Memory<ushort> Index { get; }
+        private ushort WordIndex { get; set; } = 256;
+
+        public ushort this[int index] => this.Index.Span[index];
 
         public BWDIndex(ReadOnlyMemory<byte> buffer)
         {
@@ -22,9 +25,12 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
                 Console.WriteLine($"LCP array took: {timer.Elapsed}"); timer.Stop();
             this.BitVector = new BitVector(buffer.Length, bit: true);
             this.Buffer = buffer;
+            this.Index = new ushort[buffer.Length];
+            for (int i = 0; i < buffer.Length; i++)
+                this.Index.Span[i] = buffer.Span[i];
         }
 
-        public int GetParsedCount(Match match)
+        public (int Count, int Location) GetParsedCountAndLocation(Match match)
         {
             // TODO: Check if parsing even is needed or we can just return count of the match object
             var locations = this.SA[match.Index..(match.Index + match.Count)];
@@ -44,7 +50,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
                     count += 1;
                 }
             }
-            return count;
+            return (count, lastMatch);
         }
 
         public int[] Parse(Match match)
@@ -83,7 +89,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
 
         public void MarkWordAsUnavailable(Word chosenWord)
         {
-            // TODO: Write a bwdindex.search(word) and bwdIndex.search(readonlydata<byte>)
             // This word has been added to the dictionary; mark it as unavailable
             var word = this.Buffer.Slice(chosenWord.Location, chosenWord.Length);
             var rawSortedLocations = this.SA.Search(this.Buffer, word);
@@ -94,8 +99,10 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
                 for (int j = 0; j < word.Length; j++)
                 {
                     this.BitVector[locations[i]+j] = false;
+                    this.Index.Span[locations[i]+j] = this.WordIndex;
                 }
             }
+            this.WordIndex++;
         }
     }
 }
