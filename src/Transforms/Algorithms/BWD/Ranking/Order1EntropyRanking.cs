@@ -80,7 +80,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 
             if (rank > this.BestWord.Rank)
             {
-                this.BestWord = new RankedWord(new Word(loc, match.Length), rank);
+                this.BestWord = new RankedWord(new Word(loc, match.Length), rank, locs.Length);
                 this.BestWordModel = model;
                 this.Ew = encodedSize;
                 this.d = dictOverhead;
@@ -141,19 +141,19 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
                     // foreach (var kvp in this.Order1[context])
                     // {
                     //     var pxy = kvp.Value / cn;
-                    //     try
-                    //     {
+                    //     // try
+                    //     // {
                     //         var px = this.Order0[kvp.Key] / n;
                     //         entropy -= py * Math.Max(pxy * Math.Log2(pxy), px * Math.Log2(px));
-                    //     }
-                    //     catch
-                    //     {
-                    //         // This is a problem of issue #32
-                    //         Console.WriteLine($"context is: {context}");
-                    //         Console.WriteLine($"context count is: {this.Order0[context]}");
-                    //         Console.WriteLine($"count is: {kvp.Value}");
-                    //         Console.WriteLine($"key is: {kvp.Key}");
-                    //     }
+                    //     // }
+                    //     // catch
+                    //     // {
+                    //     //     // This is a problem of issue #32
+                    //     //     Console.WriteLine($"context is: {context}");
+                    //     //     Console.WriteLine($"context count is: {this.Order0[context]}");
+                    //     //     Console.WriteLine($"count is: {kvp.Value}");
+                    //     //     Console.WriteLine($"key is: {kvp.Key}");
+                    //     // }
                     // }
                 }
                 return entropy;

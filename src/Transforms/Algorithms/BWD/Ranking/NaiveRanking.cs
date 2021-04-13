@@ -8,8 +8,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
     public class NaiveRanking : IBWDRanking
     {
         public int BPC { get; }
-        private RankedWord BestWord { get; set; }
-        private readonly RankedWord InitialWord = new RankedWord(new Word(-1, -1), double.MinValue);
+        private RankedWord BestWord { get; set; } = RankedWord.Empty;
+        private readonly RankedWord InitialWord = RankedWord.Empty;
         private Dictionary<int, Dictionary<int, double>> LearnedRanks { get; set; }
         public BWDIndex BWDIndex { get; private set; }
 
@@ -36,7 +36,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             }
 
             if (rank > this.BestWord.Rank)
-                this.BestWord = new RankedWord(new Word(this.BWDIndex.SA[match.Index], match.Length), rank);
+                this.BestWord = new RankedWord(new Word(this.BWDIndex.SA[match.Index], match.Length), rank, count);
         }
 
         public List<RankedWord> GetTopRankedWords()
