@@ -9,8 +9,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
     {
         private RankedWord BestWord { get; set; }
         private readonly RankedWord InitialWord = RankedWord.Empty;
-        private List<int> Model { get; set; } = new();
-        private List<int> BestWordModel { get; set; } = new();
+        private int[] Model { get; set; }
+        private int[] BestWordModel { get; set; }
         public BWDIndex BWDIndex { get; private set; }
 
         // State
@@ -26,10 +26,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         {
             // TODO: Start with a bias for initial dictionary overhead
             this.BWDIndex = BWDIndex;
-            this.Model = new List<int>(capacity: 512);
             this.S = this.BWDIndex.Length;
-            for (int i = 0; i < 256; i++)
-                this.Model.Add(0);
+            this.Model = new int[256];
             for (int i = 0; i < this.BWDIndex.Length; i++)
                 this.Model[this.BWDIndex[i]]++;
             var entropy = GetEntropy(this.Model);
@@ -41,13 +39,14 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         public void Rank(Match match)
         {
             if (match.Length < 2) return; // Rank of single characters is 0
-            var (count, loc) = this.BWDIndex.GetParsedCountAndLocation(match);
+            var (count, loc) = this.BWDIndex.Count(match);
             if (count < 2) return; // Must locate match at at least 2 locations to get gains
 
             // Copy the model
-            var model = new List<int>(this.Model);
+            var model = new int[this.Model.Length + 1];
+            Array.Copy(this.Model, model, this.Model.Length);
             // Update the model
-            model.Add(count);
+            model[this.Model.Length] = count;
             for (int s = 0; s < match.Length; s++)
                 model[this.BWDIndex[loc+s]] -= count;
             // Console.WriteLine(GetEntropy());
@@ -60,7 +59,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             if (rank > this.BestWord.Rank)
             {
                 this.BestWord = new RankedWord(new Word(loc, match.Length), rank);
-                this.BestWordModel = new List<int>(model);
+                this.BestWordModel = model;
                 this.Ew = encodedSize;
                 this.Sw = GetNewSymbolCount(count, match.Length);
                 this.d = dictOverhead;
@@ -69,7 +68,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 
         public List<RankedWord> GetTopRankedWords()
         {
-            this.Model = new List<int>(this.BestWordModel); // Update the model
+            this.Model = this.BestWordModel; // Update the model
             this.D += this.d; // Update the dictionary size
             this.E = this.Ew;
             this.S = this.Sw;
@@ -86,24 +85,24 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             return new List<RankedWord>() { word };
         }
 
-        private double GetEntropy(List<int> model)
+        private double GetEntropy(int[] model)
         {
             double n = this.S;
             double entropy = n * Math.Log2(n);
 
-            for (int i = 0; i < model.Count; i++)
+            for (int i = 0; i < model.Length; i++)
                 entropy -= model[i] * Math.Log2(Math.Max(1, model[i]));
 
             entropy /= n;
             return entropy;
         }
 
-        private double GetSize(List<int> model, int count, int length)
+        private double GetSize(int[] model, int count, int length)
         {
             double n = GetNewSymbolCount(count, length);
             double size = n * Math.Log2(n);
 
-            for (int i = 0; i < model.Count; i++)
+            for (int i = 0; i < model.Length; i++)
                 size -= model[i] * Math.Log2(Math.Max(1, model[i]));
 
             return size;

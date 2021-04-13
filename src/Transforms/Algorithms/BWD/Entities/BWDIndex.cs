@@ -30,7 +30,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
                 this.Index.Span[i] = buffer.Span[i];
         }
 
-        public (int Count, int Location) GetParsedCountAndLocation(Match match)
+        public (int Count, int Location) Count(Match match)
         {
             // TODO: Check if parsing even is needed or we can just return count of the match object
             var locations = this.SA[match.Index..(match.Index + match.Count)];
