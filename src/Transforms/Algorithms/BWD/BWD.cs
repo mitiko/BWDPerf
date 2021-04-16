@@ -78,7 +78,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 .AsSpan();
             foreach (var symbol in bytes)
                 str += (char) symbol;
-            Console.WriteLine($"word -- '{str}'; ({loc}, {len}) -- {rw.Rank}");
+
+            Console.WriteLine($"word -- '{str}'; ({loc}, {len}, {rw.Count}) -- {rw.Rank}");
         }
     }
 }
