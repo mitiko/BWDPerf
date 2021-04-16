@@ -32,7 +32,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
 
         public (int Count, int Location) Count(Match match)
         {
-            // TODO: Check if parsing even is needed or we can just return count of the match object
             var locations = this.SA[match.Index..(match.Index + match.Count)];
             Array.Sort(locations);
             var count = 0;
@@ -55,14 +54,11 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
 
         public int[] Parse(Match match)
         {
-            // TODO: Check if parsing even is needed or we can just return the array from the locations (not even sort it)
             var locations = this.SA[match.Index..(match.Index + match.Count)];
             Array.Sort(locations);
             return this.Parse(locations, match.Length);
         }
 
-        // TODO: Don't parse when the word can't overlap with itself - i.e. for most text
-        // Also maybe write better parsing, since genetic data will overlap with itself a lot!
         public int[] Parse(int[] rawSortedLocations, int wordLength)
         {
             var results = new int[rawSortedLocations.Length];

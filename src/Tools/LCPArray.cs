@@ -42,5 +42,12 @@ namespace BWDPerf.Tools
                 if (k > 0) k--;
             }
         }
+
+        public void Print(int startIndex = 0, int endIndex = -1)
+        {
+            if (endIndex == -1) endIndex = this.LCP.Length;
+            for (int i = startIndex; i < endIndex; i++)
+                Console.WriteLine(this.LCP[i]);
+        }
     }
 }
