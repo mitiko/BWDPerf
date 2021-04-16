@@ -45,7 +45,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
             var elapsedTime = timer.Elapsed;
             Console.WriteLine($"Dict size is {dictionary.Count}");
-            Console.WriteLine($"Time to compute dictionary: {elapsedTime}; Avg per word: {elapsedTime / dictionary.Count}");
+            Console.WriteLine($"Time to compute dictionary: {elapsedTime}");
+            if (dictionary.Count != 0) Console.WriteLine($"Avg time spent per word: {elapsedTime / dictionary.Count}");
 
             // If there are no more good words, add the remaining of the individual symbols to the dictionary
             // TODO: Extract this in BWDIndex.ExtractSingleCharacters or smth.
