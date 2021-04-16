@@ -35,13 +35,17 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             var (count, loc) = this.BWDIndex.Count(match);
             if (count < 2) return; // Must locate match at at least 2 locations to get gains
 
+            var wordDictionary = new OccurenceDictionary<ushort>();
+            for (int s = 0; s < len; s++)
+                wordDictionary.Add(this.BWDIndex[loc+s]);
+
             int n1 = n - count * (len - 1);
             double rank = 0;
-            for (int s = 0; s < len; s++)
+            foreach (var character in wordDictionary)
             {
-                int cx = this.Model[this.BWDIndex[loc+s]];
-                int cxw = cx - count;
-                rank -= cx * Math.Log2(cx) - cxw * Math.Log2(cxw);
+                int cx = this.Model[character.Key];
+                int cxw = cx - character.Value * count;
+                rank += cxw * Math.Log2(cxw) - cx * Math.Log2(cx);
             }
             rank += count * Math.Log2(count);
             rank -= n1 * Math.Log2(n1);
