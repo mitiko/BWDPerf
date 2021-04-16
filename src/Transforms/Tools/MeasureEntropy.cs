@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BWDPerf.Interfaces;
 using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
@@ -19,12 +20,10 @@ namespace BWDPerf.Transforms.Tools
                 yield return symbol;
             }
 
-            double totalFrequency = 0;
-            foreach (var frequency in this.OD.Values)
-                totalFrequency += frequency;
+            double sum = this.OD.Sum();
             double entropy = 0;
             foreach (var freq in this.OD.Values)
-                entropy -= (freq / totalFrequency) * Math.Log2(freq / totalFrequency);
+                entropy -= (freq / sum) * Math.Log2(freq / sum);
             Console.WriteLine($"[{this.GetHashCode()}] Entropy: {entropy}; Count: {this.OD.Count}");
             this.OD.Clear();
         }
@@ -40,24 +39,20 @@ namespace BWDPerf.Transforms.Tools
                 }
 
                 // Calculate stream entropy
-                double totalFrequency = 0;
-                foreach (var frequency in this.ODInt.Values)
-                    totalFrequency += frequency;
+                double sum = this.ODInt.Sum();
                 double entropy = 0;
                 foreach (var freq in this.ODInt.Values)
-                    entropy -= (freq / totalFrequency) * Math.Log2(freq / totalFrequency);
+                    entropy -= (freq / sum) * Math.Log2(freq / sum);
 
                 // Calculate dictionary entropy
                 var dictionary = block.Dictionary.Serialize();
                 for (int i = 0; i < dictionary.Length; i++)
                     this.OD.Add(dictionary.Span[i]);
 
-                totalFrequency = 0;
-                foreach (var frequency in this.OD.Values)
-                    totalFrequency += frequency;
+                sum = this.OD.Sum();
                 double dictEntropy = 0;
                 foreach (var freq in this.OD.Values)
-                    dictEntropy -= (freq / totalFrequency) * Math.Log2(freq / totalFrequency);
+                    dictEntropy -= (freq / sum) * Math.Log2(freq / sum);
 
                 Console.WriteLine($"[{this.GetHashCode()}] Stream: {entropy}; Stream length: {block.Stream.Length}; Distinct symbols: {this.ODInt.Count}");
                 Console.WriteLine($"[{this.GetHashCode()}] Dictionary: {dictEntropy}; Dictionary length: {dictionary.Length}");

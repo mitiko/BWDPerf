@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using BWDPerf.Interfaces;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
@@ -20,25 +22,22 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
                 var lcp = this.BWDIndex.LCP[i];
                 if (matches.Count == 0)
                 {
-                    if (lcp >= 2) matches.Push(new Match(i, 0, lcp));
-                    continue;
+                    for (int l = 2; l <= lcp; l++)
+                        matches.Push(new Match(i, 0, l));
                 }
-                while (matches.TryPeek(out var match))
+
+                while (matches.TryPeek(out var match) && lcp < match.Length)
                 {
-                    if (lcp < match.Length)
-                    {
-                        var m = matches.Pop();
-                        m.Count = i - m.Index + 1;
-                        yield return m;
-                    }
-                    else if (lcp > match.Length)
-                    {
-                        matches.Push(new Match(i, 0, lcp));
-                        break;
-                    }
-                    else break;
+                    var m = matches.Pop();
+                    m.Count = i - m.Index + 1;
+                    yield return m;
+                }
+                while (matches.TryPeek(out var match) && lcp > match.Length)
+                {
+                    matches.Push(new Match(i, 0, match.Length + 1));
                 }
             }
+            Debug.Assert(matches.Count == 0, "There were matches left in the LCP stack.");
         }
     }
 }
