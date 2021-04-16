@@ -30,6 +30,10 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             var dictionary = new BWDictionary();
             for (int i = 0; !this.BWDIndex.BitVector.IsEmpty(); i++)
             {
+                // 0xFFFF is reserved. 0x0000-0x0100 is for single characters.
+                // This implies max dict size is 65278 words.
+                // Note no backwards compatibility is ensured!
+                if (i == ushort.MaxValue - 256) break;
                 foreach (var match in this.MatchFinder.GetMatches())
                     this.Ranking.Rank(match);
 
