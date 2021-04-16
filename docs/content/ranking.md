@@ -56,8 +56,7 @@ We know that the entropy of $T$ is:
 $$
 H(\mathbb{A}) = - \sum_{x_i \in \mathbb {A}} p(x_i) \log(p(x_i))
 $$
-where $p(x_i)$ is the probability of finding $x_i$ in $T$.  
-We can also use a higher order definition $H_n(\mathbb{A})$, just by swapping $p(x_i)$ with $p_n(x_i)$, where $p_n(x_i)$ is the probability of the next symbol being $x_i$ given the previous $n$ symbols in the text $T$.
+where $p(x_i)$ is the probability of finding $x_i$ at any location in $T$.
 
 We can now approximate the size of the encoded file with:
 $$
@@ -72,13 +71,12 @@ H(W) = - \sum_{w_i \in W} p(w_i) \log(p(w_i))
 $$
 For the encoded size, we need a little bit of trickery to calculate the count of symbols after the transform.
 
-Each word occurs $s \times p_0(w)$ times. Then the total count of symbols comes up to:
+Each word occurs $s \times p(w)$ times. Then the total count of symbols comes up to:
 $$
-C(W) = \sum_{w_i \in W} s \times p_0(w_i) = s \times \sum_{w_i \in W} p_0(w_i)
+C(W) = \sum_{w_i \in W} s \times p(w_i) = s \times \sum_{w_i \in W} p(w_i)
 $$
-It is important that we use the first order probability ${p_0(w) = \frac{count(w)}{\sum count(w_i)}}$ here, unlike the entropy equation, where we can approximate $p(w)$ with more accurate predictions.
 
-Let us aknowledge that $C(\mathbb{A}) = s$. This is because ${\sum p_0(x_i) = 1}$.
+Let us aknowledge that $C(\mathbb{A}) = s$. This is because ${\sum p(x_i) = 1}$.
 We can also make the observation that for any dictionary ${C(W) \le s}$.
 
 The encoded size, after using a dictionary comes up to:
@@ -277,7 +275,7 @@ Anyway, not impossible, and an $O(n \log n)$ solution probably exists.
 
 The cool thing about this entropy estimation is that the encoder and decoder don't have to use the same probabilities. The closer the dictionary is tuned to the real weights, the better the encoder should be. But if the encoder is way off from appropriate predictions, it might be better to tune the dictionary to how the decoder predicts.
 
-So, yeah, order-n models with a mixer will decide better if a word should be decided to the dictionary. There's also an inbetween, where we use the same structure for choosing words to add to the dictionary, but we do it on-line and not on the whole block. Then we can model the top couple of words and predict multiple symbols at once. This is quite advanced and I think adding some patterns may aid compression more in the short term.
+So, yeah, order-n models with a mixer will decide better if a word should be added to the dictionary. There's also an inbetween, where we use the same structure for choosing words to add to the dictionary, but we do it on-line and not on the whole block. Then we can model the top couple of words and predict multiple symbols at once. This is quite advanced and I think adding some patterns may aid compression more in the short term.
 
 To make it all go faster, we can do some approximations on the probabilities. Maybe even skip ranking words if we're certain they're not going to outrank the current best, by using some strong-ish inequality. The other thing to do is implement lookup tables - for the log, for plogp and such.
 

@@ -4,12 +4,14 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
     {
         public Word Word { get; set; }
         public double Rank { get; set; }
-        public static RankedWord Empty => new RankedWord(Word.Empty, double.MinValue);
+        public int Count { get; set; }
+        public static RankedWord Empty => new RankedWord(Word.Empty, double.MinValue, 0);
 
-        public RankedWord(Word word, double rank)
+        public RankedWord(Word word, double rank, int count)
         {
             this.Word = word;
             this.Rank = rank;
+            this.Count = count;
         }
     }
 }

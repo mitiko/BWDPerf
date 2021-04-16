@@ -8,75 +8,89 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 {
     public class EntropyRanking : IBWDRanking
     {
-        private RankedWord BestWord { get; set; }
+        private RankedWord BestWord { get; set; } = RankedWord.Empty;
         private readonly RankedWord InitialWord = RankedWord.Empty;
-        private Dictionary<byte, double> FreqTable { get; } = new();
+        private OccurenceDictionary<ushort> Model { get; set; } = new();
+        public BWDIndex BWDIndex { get; private set; }
 
-        private double C = 1; // symbols per byte
-        private double H = 8; // bits per symbol (entropy)
-        private double n = 0; // block size
-        private double dC = 0; // best word's change in C
-        private double dH = 0; // best word's change in H
+        private int n = 0; // Symbol count
+        public ushort wordIndex = 256; // Next word index
 
-        public void Initialize(ReadOnlyMemory<byte> buffer)
+        public void Initialize(BWDIndex BWDIndex)
         {
-            // TODO: Start with a bias for initial dictionry overhead
-            var symbols = new OccurenceDictionary<byte>();
-            this.n = buffer.Length;
-            double entropy = 0;
-            for (int i = 0; i < n; i++)
-                symbols.Add(buffer.Span[i]);
-            foreach (var kvp in symbols)
-                this.FreqTable.Add(kvp.Key, kvp.Value / n);
-            foreach (var kvp in this.FreqTable)
-            {
-                Console.WriteLine($"'{(char) kvp.Key}' --> {kvp.Value}");
-                entropy -= kvp.Value * Math.Log2(kvp.Value);
-            }
-            Console.WriteLine($"-> Inititial entropy: {entropy}");
+            // TODO: Start with a bias for initial dictionary overhead
+            this.BWDIndex = BWDIndex;
+            this.n = this.BWDIndex.Length;
+            for (int i = 0; i < this.BWDIndex.Length; i++)
+                this.Model.Add(this.BWDIndex[i]);
 
-            this.H = entropy;
+            Console.WriteLine($"-> Inititial entropy: {GetEntropy()}");
             this.BestWord = RankedWord.Empty;
         }
 
-        public void Rank(Word word, int count, ReadOnlyMemory<byte> buffer)
+        public void Rank(Match match)
         {
-            double pw = (double) count / n;
-            double deltaC = pw * (word.Length - 1);
-            // TODO: Store deltaC in a hash table of [length][count]
-            double deltaH = pw * Math.Log2(pw);
-            for (int s = 0; s < word.Length; s++)
+            var len = match.Length;
+            if (len < 2) return; // Rank of single characters is 0
+            var (count, loc) = this.BWDIndex.Count(match);
+            if (count < 2) return; // Must locate match at at least 2 locations to get gains
+
+            var wordDictionary = new OccurenceDictionary<ushort>();
+            for (int s = 0; s < len; s++)
+                wordDictionary.Add(this.BWDIndex[loc+s]);
+
+            int n1 = n - count * (len - 1);
+            double rank = 0;
+            foreach (var character in wordDictionary)
             {
-                double px = this.FreqTable[buffer.Span[word.Location + s]];
-                double pChange = px - pw;
-                deltaH += pChange * Math.Log2(pChange) - px * Math.Log2(px);
+                int cx = this.Model[character.Key];
+                int cxw = cx - character.Value * count;
+                rank += cxw * Math.Log2(cxw) - cx * Math.Log2(cx);
             }
-            double dictOverhead = (double) 8 * (word.Length + 1) / n;
-            double rank = C * deltaH + deltaC * H + deltaC * deltaH - dictOverhead;
+            rank += count * Math.Log2(count);
+            rank -= n1 * Math.Log2(n1);
+            rank += n * Math.Log2(n);
+            rank -= 8 * (len + 1); // Dictionary overhead
 
             if (rank > this.BestWord.Rank)
-            {
-                this.BestWord = new RankedWord(word, rank);
-                this.dC = deltaC;
-                this.dH = deltaH;
-            }
+                this.BestWord = new RankedWord(new Word(loc, len), rank, count);
         }
 
         public List<RankedWord> GetTopRankedWords()
         {
-            this.C -= this.dC;
-            this.H -= this.dH;
             var word = this.BestWord;
-            this.BestWord = RankedWord.Empty;
             if (word.Rank <= 0)
             {
-                Console.WriteLine($"Final entropy estimated: {this.H}");
+                Console.WriteLine($"Final entropy estimate: {GetEntropy()}");
                 return new List<RankedWord>() { RankedWord.Empty };
             }
-            Console.WriteLine($"dH: {dH}");
-            Console.WriteLine($"H: {H}");
-            Console.WriteLine($"Rank: {word.Rank}");
+            this.UpdateModel();
+            this.BestWord = RankedWord.Empty;
             return new List<RankedWord>() { word };
+        }
+
+        private void UpdateModel()
+        {
+            var loc = this.BestWord.Word.Location;
+            var len = this.BestWord.Word.Length;
+            var c = this.BestWord.Count;
+            this.n -= c * (len - 1);
+            this.Model.Add(this.wordIndex++, c);
+            // TODO: Check if anythings goes negative
+            for (int s = 0; s < len; s++)
+                this.Model.SubstractMany(this.BWDIndex[loc+s], c);
+        }
+
+        private double GetEntropy()
+        {
+            double entropy = 0;
+            double sum = this.Model.Sum();
+            foreach (var x in this.Model.Values)
+            {
+                double px = x / sum;
+                entropy -= px * Math.Log2(px);
+            }
+            return entropy;
         }
     }
 }

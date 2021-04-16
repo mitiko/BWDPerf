@@ -10,8 +10,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD
     {
         private BWD BWD { get; }
 
-        public BWDEncoder(Options options, IBWDRanking ranking) =>
-            this.BWD = new BWD(options, ranking);
+        public BWDEncoder(IBWDRanking ranking, IBWDMatching matchFinder) =>
+            this.BWD = new BWD(ranking, matchFinder);
 
         public async IAsyncEnumerable<BWDBlock> Encode(IAsyncEnumerable<ReadOnlyMemory<byte>> input)
         {

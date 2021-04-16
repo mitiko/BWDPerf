@@ -8,34 +8,35 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
     public class NaiveRanking : IBWDRanking
     {
         public int BPC { get; }
-        private RankedWord BestWord { get; set; }
-        private readonly RankedWord InitialWord = new RankedWord(new Word(-1, -1), double.MinValue);
+        private RankedWord BestWord { get; set; } = RankedWord.Empty;
+        private readonly RankedWord InitialWord = RankedWord.Empty;
         private Dictionary<int, Dictionary<int, double>> LearnedRanks { get; set; }
+        public BWDIndex BWDIndex { get; private set; }
 
-        public NaiveRanking(Options options)
+        public NaiveRanking(int maxWordSize, int bpc = 8)
         {
-            this.BPC = options.BPC;
+            this.BPC = bpc;
             this.BestWord = InitialWord;
             this.LearnedRanks = new Dictionary<int, Dictionary<int, double>>();
-            for (int i = 1; i <= options.MaxWordSize; i++)
+            for (int i = 1; i <= maxWordSize; i++)
                 this.LearnedRanks.Add(i, new Dictionary<int, double>());
         }
 
-        public void Initialize(ReadOnlyMemory<byte> buffer)
-        {
-        }
+        public void Initialize(BWDIndex BWDIndex) => this.BWDIndex = BWDIndex;
 
-        public void Rank(Word word, int count, ReadOnlyMemory<byte> buffer)
+        public void Rank(Match match)
         {
-            if (!this.LearnedRanks[word.Length].TryGetValue(count, out var rank))
+            var count = this.BWDIndex.Count(match).Count;
+            if (count < 2 || match.Length == 1) return;
+            if (!this.LearnedRanks[match.Length].TryGetValue(count, out var rank))
             {
-                var calcRank = (word.Length - 1) * (count - 1);
-                this.LearnedRanks[word.Length].Add(count, calcRank);
+                var calcRank = (match.Length - 1) * (count - 1);
+                this.LearnedRanks[match.Length].Add(count, calcRank);
                 rank = calcRank;
             }
 
             if (rank > this.BestWord.Rank)
-                this.BestWord = new RankedWord(word, rank);
+                this.BestWord = new RankedWord(new Word(this.BWDIndex.SA[match.Index], match.Length), rank, count);
         }
 
         public List<RankedWord> GetTopRankedWords()
