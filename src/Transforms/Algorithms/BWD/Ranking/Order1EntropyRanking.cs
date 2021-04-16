@@ -89,12 +89,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 
         public List<RankedWord> GetTopRankedWords()
         {
-            this.Model = this.BestWordModel; // Update the model
-            this.D += this.d; // Update the dictionary size
-            this.E = this.Ew;
-            this.WordIndex += 1; // Update the word index
             var word = this.BestWord;
-            this.BestWord = RankedWord.Empty;
             if (word.Rank <= 0 || this.WordIndex == ushort.MaxValue)
             {
                 var o1Entropy = this.Model.GetEntropy();
@@ -103,7 +98,11 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
                 Console.WriteLine($"[ESTIMATE] Uncompressed dictionary size estimated: {D}");
                 return new List<RankedWord>() { RankedWord.Empty };
             }
-            Console.WriteLine($"E: {E}; d: {d}");
+            this.Model = this.BestWordModel; // Update the model
+            this.D += this.d; // Update the dictionary size
+            this.E = this.Ew; // Update the state
+            this.WordIndex += 1; // Update the word index
+            this.BestWord = RankedWord.Empty;
             return new List<RankedWord>() { word };
         }
 
@@ -134,27 +133,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
                         var pxy = count / cn;
                         entropy -= py * pxy * Math.Log2(pxy);
                     }
-
-                    // This is a mix of order0 and order1 encoding, always choosing the better one
-                    // In practise these predictions are impossible for the entropy coder afterwards
-                    // Just testing things out
-                    // foreach (var kvp in this.Order1[context])
-                    // {
-                    //     var pxy = kvp.Value / cn;
-                    //     // try
-                    //     // {
-                    //         var px = this.Order0[kvp.Key] / n;
-                    //         entropy -= py * Math.Max(pxy * Math.Log2(pxy), px * Math.Log2(px));
-                    //     // }
-                    //     // catch
-                    //     // {
-                    //     //     // This is a problem of issue #32
-                    //     //     Console.WriteLine($"context is: {context}");
-                    //     //     Console.WriteLine($"context count is: {this.Order0[context]}");
-                    //     //     Console.WriteLine($"count is: {kvp.Value}");
-                    //     //     Console.WriteLine($"key is: {kvp.Key}");
-                    //     // }
-                    // }
                 }
                 return entropy;
             }
