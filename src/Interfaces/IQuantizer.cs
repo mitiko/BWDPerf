@@ -1,3 +1,5 @@
+using BWDPerf.Transforms.Modeling;
+
 namespace BWDPerf.Interfaces
 {
     public interface IQuantizer
@@ -7,12 +9,14 @@ namespace BWDPerf.Interfaces
         // The idea is to have the sum be 2^12
         public int Accuracy { get; }
 
+        // Return the prediction of the model
+        public Prediction Predict();
 
         // Get cumulative distribution frequency and frequency
-        public (int cdf, int f) GetPrediction(int symbolIndex);
+        public (int cdf, int freq) Encode(int symbolIndex, Prediction prediction);
 
         // Get symbol based on cdf range it falls in
-        public int GetSymbolIndex(int cdf);
+        public int Decode(int cdf, Prediction prediction);
 
         // Update the underlying model by passing what the symbol was
         public void Update(int symbolIndex);

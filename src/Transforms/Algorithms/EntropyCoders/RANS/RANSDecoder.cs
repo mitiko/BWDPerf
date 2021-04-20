@@ -7,14 +7,14 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
 {
     public class RANSDecoder<TSymbol> : IDecoder<byte, TSymbol>
     {
-        public Alphabet<TSymbol> Alphabet { get; }
+        public IAlphabet<TSymbol> Alphabet { get; }
         public IQuantizer Model { get; }
 
         // See encoder for explanation of these constants
         public const uint _L = 1u << 23;
         public const int _logB = 8;
 
-        public RANSDecoder(Alphabet<TSymbol> alphabet, IQuantizer model)
+        public RANSDecoder(IAlphabet<TSymbol> alphabet, IQuantizer model)
         {
             this.Alphabet = alphabet;
             this.Model = model;
@@ -37,12 +37,15 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
             while (true)
             {
                 // Decode
-                var symbol = this.Model.GetSymbolIndex((int) (state & mask));
+                var cdf = (int) state & mask;
+                var prediction = this.Model.Predict();
+                var symbol = this.Model.Decode(cdf, prediction);
                 yield return this.Alphabet[symbol];
-                var (cdf, freq) = this.Model.GetPrediction(symbol);
+
+                var (eCDF, eFreq) = this.Model.Encode(symbol, prediction);
+                state = (uint) (eFreq * (state >> n) + (state & mask) - eCDF);
                 this.Model.Update(symbol);
 
-                state = (uint) (freq * (state >> n) + (state & mask) - cdf);
                 // Renormalize
                 if (state == _L)
                     break;

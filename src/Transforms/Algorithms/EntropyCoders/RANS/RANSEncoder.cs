@@ -7,7 +7,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
 {
     public class RANSEncoder<TSymbol> : ICoder<ReadOnlyMemory<TSymbol>, byte>
     {
-        public Alphabet<TSymbol> Alphabet { get; }
+        public IAlphabet<TSymbol> Alphabet { get; }
         public IQuantizer Model { get; }
 
         // Normalization range is [L, bL), where L = kM to ensure b-uniqueness
@@ -19,7 +19,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
         public const int _logB = 8; // b = 256, so we emit a byte when normalizing
         public const int _bMask = 255; // mask to get the last logB bits
 
-        public RANSEncoder(Alphabet<TSymbol> alphabet, IQuantizer model)
+        public RANSEncoder(IAlphabet<TSymbol> alphabet, IQuantizer model)
         {
             this.Alphabet = alphabet;
             this.Model = model;
@@ -37,7 +37,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
                 for (int i = 0; i < buffer.Length; i++)
                 {
                     var symbol = this.Alphabet[buffer.Span[i]];
-                    var (cdf, freq) = this.Model.GetPrediction(symbol);
+                    var (cdf, freq) = this.Model.Encode(symbol, this.Model.Predict());
                     cdfs[i] = cdf;
                     freqs[i] = freq;
                     this.Model.Update(symbol);

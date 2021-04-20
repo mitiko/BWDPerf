@@ -3,9 +3,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using BWDPerf.Architecture;
 using BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS;
-using BWDPerf.Transforms.Modeling;
+using BWDPerf.Transforms.Modeling.Alphabets;
 using BWDPerf.Transforms.Modeling.Submodels;
-using BWDPerf.Transforms.Quantizers;
+using BWDPerf.Transforms.Modeling.Quantizers;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -22,7 +22,7 @@ namespace BWDPerf.Tests
         [TestMethod]
         public async Task TestCompression()
         {
-            var alphabet = Alphabet<byte>.ForText();
+            var alphabet = new TextAlphabet();
             var model = new Order0(alphabet.Length);
             var quantizer = new BasicQuantizer(model);
             var compressTask = new BufferedFileSource(_file, 10_000_000) // 10MB
@@ -35,7 +35,7 @@ namespace BWDPerf.Tests
         [TestMethod]
         public async Task TestDecompression()
         {
-            var alphabet = Alphabet<byte>.ForText();
+            var alphabet = new TextAlphabet();
             var model = new Order0(alphabet.Length);
             var quantizer = new BasicQuantizer(model);
             var decompressTask = new FileSource(_compressedFile)

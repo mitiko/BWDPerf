@@ -12,9 +12,10 @@ using BWDPerf.Transforms.Algorithms.BWD.Entities;
 using BWDPerf.Transforms.Algorithms.BWD.Ranking;
 using BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS;
 using BWDPerf.Transforms.Modeling;
+using BWDPerf.Transforms.Modeling.Alphabets;
 using BWDPerf.Transforms.Modeling.Mixers;
 using BWDPerf.Transforms.Modeling.Submodels;
-using BWDPerf.Transforms.Quantizers;
+using BWDPerf.Transforms.Modeling.Quantizers;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
@@ -24,7 +25,7 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        var alphabet = Alphabet<byte>.ForText();
+        var alphabet = new TextAlphabet();
         var modelA = new Order0(alphabet.Length);
         var modelB = new Order1(alphabet.Length);
         var model = new SimpleMixer(modelA, modelB);
@@ -41,14 +42,13 @@ class Program
         Console.WriteLine($"Compression took: {timer.Elapsed}");
         timer.Restart();
         // await new BWDBenchmark().Decompress();
-        var alphabet1 = Alphabet<byte>.ForText();
         var modelA1 = new Order0(alphabet.Length);
         var modelB1 = new Order1(alphabet.Length);
         var model1 = new SimpleMixer(modelA1, modelB1);
         // var model1 = new Order0(alphabet.Length);
         var quantizer1 = new BasicQuantizer(model1);
         var decompressTask = new FileSource("encoded.rans")
-            .ToDecoder(new RANSDecoder<byte>(alphabet1, quantizer1))
+            .ToDecoder(new RANSDecoder<byte>(alphabet, quantizer1))
             .Serialize(new SerializeToFile("decoded.rans"));
 
         await decompressTask;

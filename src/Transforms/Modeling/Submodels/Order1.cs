@@ -4,33 +4,32 @@ namespace BWDPerf.Transforms.Modeling.Submodels
 {
     public class Order1 : IModel
     {
-        public int[][] Counts { get; }
-        public int State { get; private set; }
+        private int[][] Counts { get; }
+        private int[] Sums { get; }
+        private int State { get; set; }
 
         public Order1(int symbolCount)
         {
             this.Counts = new int[symbolCount][];
             for (int i = 0; i < this.Counts.Length; i++)
                 this.Counts[i] = new int[symbolCount];
-            for (int i = 0; i < this.Counts.Length; i++)
-                for (int j = 0; j < this.Counts[i].Length; j++)
-                    this.Counts[i][j] = 1;
+            this.Sums = new int[symbolCount];
         }
 
         public Prediction Predict()
         {
+            double sum = this.Sums[this.State];
+            if (sum == 0) return Prediction.Uniform(this.Counts.Length);
             var prediction = new Prediction(this.Counts.Length);
-            double n = 0;
             for (int i = 0; i < this.Counts.Length; i++)
-                n += this.Counts[this.State][i];
-            for (int i = 0; i < this.Counts.Length; i++)
-                prediction[i] = this.Counts[this.State][i] / n;
+                prediction[i] = this.Counts[this.State][i] / sum;
             return prediction;
         }
 
         public void Update(int symbolIndex)
         {
             this.Counts[this.State][symbolIndex]++;
+            this.Sums[this.State]++;
             this.State = symbolIndex;
         }
     }

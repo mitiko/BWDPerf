@@ -4,27 +4,27 @@ namespace BWDPerf.Transforms.Modeling.Submodels
 {
     public class Order0 : IModel
     {
-        public int[] Counts { get; }
+        private int[] Counts { get; }
+        private int Sum { get; set; }
 
-        public Order0(int symbolCount)
-        {
-            this.Counts = new int[symbolCount];
-            for (int i = 0; i < this.Counts.Length; i++)
-                this.Counts[i] = 1;
-        }
+        public Order0(int symbolCount) => this.Counts = new int[symbolCount];
 
         public Prediction Predict()
         {
+            if (this.Sum == 0) return Prediction.Uniform(this.Counts.Length);
+            // System.Console.WriteLine($"a count: {this.Counts[(byte) 'a']}; Sum: {this.Sum}");
             var prediction = new Prediction(this.Counts.Length);
-            double n = 0;
+            double sum = this.Sum;
             for (int i = 0; i < this.Counts.Length; i++)
-                n += this.Counts[i];
-            for (int i = 0; i < this.Counts.Length; i++)
-                prediction[i] = this.Counts[i] / n;
+                prediction[i] = this.Counts[i] / sum;
             return prediction;
         }
 
-        public void Update(int symbolIndex) =>
+        public void Update(int symbolIndex)
+        {
+            // System.Console.WriteLine($"Updating order0 with '{(char) symbolIndex}'");
             this.Counts[symbolIndex]++;
+            this.Sum++;
+        }
     }
 }
