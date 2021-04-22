@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Numerics;
 using BWDPerf.Interfaces;
-using BWDPerf.Transforms.Modeling;
 
-namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
+namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANS
 {
     public class RANSEncoder<TSymbol> : ICoder<ReadOnlyMemory<TSymbol>, byte>
     {
@@ -16,8 +17,8 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
         // This implementation is byte aligned, so b = 256
         // L is 1<<23, so bL = (1<<23)*256 = 1<<31 < uint.MaxValue
         public const uint _L = 1u << 23;
+        public const uint _bMask = 255; // mask to get the last logB bits
         public const int _logB = 8; // b = 256, so we emit a byte when normalizing
-        public const int _bMask = 255; // mask to get the last logB bits
 
         public RANSEncoder(IAlphabet<TSymbol> alphabet, IQuantizer model)
         {
@@ -29,8 +30,8 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
         {
             await foreach (var buffer in input)
             {
-                var cdfs = new int[buffer.Length];
-                var freqs = new int[buffer.Length];
+                var cdfs = new uint[buffer.Length];
+                var freqs = new uint[buffer.Length];
 
                 uint state = _L;
                 int n = this.Model.Accuracy;
@@ -43,28 +44,27 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
                     this.Model.Update(symbol);
                 }
 
-                int pos = 0;
-                var stream = new byte[buffer.Length];
+                var stream = new Stack<byte>(capacity: buffer.Length / 2);
                 for (int i = buffer.Length - 1; i >= 0 ; i--)
                 {
-                    int cdf = cdfs[i]; int freq = freqs[i];
+                    uint cdf = cdfs[i]; uint freq = freqs[i];
 
                     // Renormalize state by emitting a byte
-                    var state_max = ((_L << _logB) >> n) * freq;
+                    uint state_max = ((_L << _logB) >> n) * freq;
                     while(state >= state_max)
                     {
-                        stream[pos++] = (byte) (state & _bMask);
+                        stream.Push((byte) (state & _bMask));
                         state >>= _logB;
                     }
-                    state = (uint) (((state / freq) << n) + state % freq + cdf);
+                    state = ((state / freq) << n) + state % freq + cdf;
                 }
 
                 // Output the state at the end. There are optimizations for using log(state) bits, but for now 32 bits is ok
                 var bytes = BitConverter.GetBytes(state);
                 foreach (var b in bytes)
                     yield return b;
-                for (int i = pos - 1; i >= 0; i--)
-                    yield return stream[i];
+                while (stream.Count > 0)
+                    yield return stream.Pop();
             }
         }
     }

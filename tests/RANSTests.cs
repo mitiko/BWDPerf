@@ -2,7 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using BWDPerf.Architecture;
-using BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS;
+using BWDPerf.Transforms.Algorithms.EntropyCoders.RANS;
 using BWDPerf.Transforms.Modeling.Alphabets;
 using BWDPerf.Transforms.Modeling.Submodels;
 using BWDPerf.Transforms.Modeling.Quantizers;

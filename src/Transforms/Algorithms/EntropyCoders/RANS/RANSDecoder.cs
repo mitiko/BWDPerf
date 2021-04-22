@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using BWDPerf.Interfaces;
-using BWDPerf.Transforms.Modeling;
+using BWDPerf.Tools;
 
-namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
+namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANS
 {
     public class RANSDecoder<TSymbol> : IDecoder<byte, TSymbol>
     {
@@ -23,48 +24,36 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS
         public async IAsyncEnumerable<TSymbol> Decode(IAsyncEnumerable<byte> input)
         {
             var enumerator = input.GetAsyncEnumerator();
-
-            var uint32Arr = new byte[4];
-            for (int i = 0; i < 4; i++)
-            {
-                await enumerator.MoveNextAsync();
-                uint32Arr[i] = enumerator.Current;
-            }
-
-            uint state = BitConverter.ToUInt32(uint32Arr);
+            var byteQueue = new Queue<byte>(capacity: 8);
+            uint state = await ByteStreamHelper.GetUInt32Async(enumerator);
             int n = this.Model.Accuracy;
-            var mask = (1 << n) - 1;
+            uint mask = (uint) (1 << n) - 1;
+
             while (true)
             {
+                Debug.Assert(_L <= state, "State was under bound [L, bL)");
+                Debug.Assert(state < (_L << _logB), "State was over bound [L, bl)");
+
                 // Decode
-                var cdf = (int) state & mask;
+                uint cdf = state & mask;
                 var prediction = this.Model.Predict();
                 var symbol = this.Model.Decode(cdf, prediction);
                 yield return this.Alphabet[symbol];
 
+                // Update model, update state
                 var (eCDF, eFreq) = this.Model.Encode(symbol, prediction);
-                state = (uint) (eFreq * (state >> n) + (state & mask) - eCDF);
+                state = eFreq * (state >> n) + (state & mask) - eCDF;
                 this.Model.Update(symbol);
 
-                // Renormalize
-                if (state == _L)
+                // Check if EOF and read bytes into the queue
+                while (byteQueue.Count <= 8 && await enumerator.MoveNextAsync())
+                    byteQueue.Enqueue(enumerator.Current);
+                if (byteQueue.Count == 0)
                     break;
-                bool end = false;
+
+                // Read bytes into the state (renormalization)
                 while (state < _L)
-                {
-                    if (!await enumerator.MoveNextAsync())
-                    {
-                        // Stream ended
-                        if (state == _L) end = true;
-                        else throw new Exception("Incorrect decode. Checksum not matching");
-                    }
-                    else
-                    {
-                        var b = enumerator.Current;
-                        state = (state << _logB) + b;
-                    }
-                }
-                if (end) break;
+                    state = (state << _logB) | byteQueue.Dequeue();
             }
         }
     }

@@ -13,10 +13,10 @@ namespace BWDPerf.Interfaces
         public Prediction Predict();
 
         // Get cumulative distribution frequency and frequency
-        public (int cdf, int freq) Encode(int symbolIndex, Prediction prediction);
+        public (uint cdf, uint freq) Encode(int symbolIndex, Prediction prediction);
 
         // Get symbol based on cdf range it falls in
-        public int Decode(int cdf, Prediction prediction);
+        public int Decode(uint cdf, Prediction prediction);
 
         // Update the underlying model by passing what the symbol was
         public void Update(int symbolIndex);

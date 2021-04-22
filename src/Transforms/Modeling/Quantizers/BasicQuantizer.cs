@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using BWDPerf.Interfaces;
 
 namespace BWDPerf.Transforms.Modeling.Quantizers
@@ -12,22 +13,22 @@ namespace BWDPerf.Transforms.Modeling.Quantizers
 
         public Prediction Predict() => this.Model.Predict();
 
-        public (int cdf, int freq) Encode(int symbolIndex, Prediction prediction)
+        public (uint cdf, uint freq) Encode(int symbolIndex, Prediction prediction)
         {
-            int cdf = 0, n = (1 << this.Accuracy) - prediction.Length;
-            int freq = 1 + (int) (prediction[symbolIndex] * n);
+            uint cdf = 0, n = (uint) ((1 << this.Accuracy) - prediction.Length);
+            uint freq = 1 + (uint) (prediction[symbolIndex] * n);
             for (int i = 0; i < symbolIndex; i++)
-                cdf += 1 + (int) (prediction[i] * n);
+                cdf += 1 + (uint) (prediction[i] * n);
             return (cdf, freq);
         }
 
-        public int Decode(int cdf, Prediction prediction)
+        public int Decode(uint cdf, Prediction prediction)
         {
-            int n = (1 << this.Accuracy) - prediction.Length;
-            int CDF = 0;
+            uint n = (uint) ((1 << this.Accuracy) - prediction.Length);
+            uint CDF = 0;
             for (int i = 0; i < prediction.Length; i++)
             {
-                CDF += 1 + (int) (prediction[i] * n);
+                CDF += 1 + (uint) (prediction[i] * n);
                 if (cdf < CDF) return i;
             }
             throw new Exception("CDF out of range");
