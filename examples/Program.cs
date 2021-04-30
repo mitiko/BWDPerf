@@ -10,7 +10,7 @@ using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 using BWDPerf.Transforms.Algorithms.BWD.Ranking;
-using BWDPerf.Transforms.Algorithms.EntropyCoders.StaticRANS;
+using BWDPerf.Transforms.Algorithms.EntropyCoders.RANS;
 using BWDPerf.Transforms.Modeling;
 using BWDPerf.Transforms.Modeling.Alphabets;
 using BWDPerf.Transforms.Modeling.Mixers;
@@ -19,21 +19,28 @@ using BWDPerf.Transforms.Modeling.Quantizers;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
-
+using System.IO;
+using System.Linq;
 
 class Program
 {
     static async Task Main(string[] args)
     {
+        var _file = "/home/mitiko/Documents/Projects/Compression/BWDPerf/data/book11";
         var alphabet = new TextAlphabet();
         var modelA = new Order0(alphabet.Length);
         var modelB = new Order1(alphabet.Length);
-        var model = new SimpleMixer(modelA, modelB);
+        var modelC = new ByteOrder2(alphabet.Length);
+        // var modelD = new ByteOrder4(alphabet.Length);
+        // var model = new Mixer3(modelC, modelB, modelA);
+        // var model = new SimpleMixer(modelC, new SimpleMixer(modelB, modelA));
+        var model = new SimpleMixer(modelB, modelA);
         // var model = new Order0(alphabet.Length);
         var quantizer = new BasicQuantizer(model);
         Console.WriteLine("Initialized");
         var timer = System.Diagnostics.Stopwatch.StartNew();
-        var compressTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/enwik4", 100_000_000) // 100MB
+        // var compressTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/calgary/book1", 1_000_000) // 1MB
+        var compressTask = new BufferedFileSource(_file, 1_000_000) // 1MB
                 .ToCoder(new RANSEncoder<byte>(alphabet, quantizer))
                 .Serialize(new SerializeToFile("encoded.rans"));
         await compressTask;
@@ -44,7 +51,12 @@ class Program
         // await new BWDBenchmark().Decompress();
         var modelA1 = new Order0(alphabet.Length);
         var modelB1 = new Order1(alphabet.Length);
-        var model1 = new SimpleMixer(modelA1, modelB1);
+        var modelC1 = new ByteOrder2(alphabet.Length);
+        // var modelD1 = new ByteOrder4(alphabet.Length);
+        // var model1 = new Mixer4(modelA1, modelC1, modelB1, modelD1);
+        // var model1 = new Mixer3(modelC1, modelB1, modelA1);
+        // var model1 = new SimpleMixer(modelC1, new SimpleMixer(modelB1, modelA1));
+        var model1 = new SimpleMixer(modelB1, modelA1);
         // var model1 = new Order0(alphabet.Length);
         var quantizer1 = new BasicQuantizer(model1);
         var decompressTask = new FileSource("encoded.rans")
@@ -54,6 +66,10 @@ class Program
         await decompressTask;
         Console.WriteLine($"Decompression took: {timer.Elapsed}");
 
+        var correctDecode = File.ReadAllBytes(_file).SequenceEqual(File.ReadAllBytes("decoded.rans"));
+        Console.WriteLine($"Correct deode: {correctDecode}");
+        var ratio = (new FileInfo("encoded.rans").Length) * 1d / (new FileInfo(_file).Length);
+        Console.WriteLine($"Compression ratio: {ratio}");
     }
 }
 

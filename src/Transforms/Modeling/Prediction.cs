@@ -14,12 +14,16 @@ namespace BWDPerf.Transforms.Modeling
             set => this.Probabilities[index] = value;
         }
         public int Length => this.Probabilities.Length;
+        public bool IsNormalized { get; private set; } = false;
 
         public Prediction(int symbolCount) => this.Probabilities = new double[symbolCount];
 
         public void Normalize()
         {
+            this.IsNormalized = true;
             double sum = this.Sum();
+            // Console.WriteLine($"[Predictions toolset] Normalizing. sum: {sum}");
+            if (sum == 0) { this.Probabilities.AsSpan().Fill(1d / this.Length); return; }
             for (int i = 0; i < this.Length; i++)
                 this.Probabilities[i] /= sum;
         }
@@ -36,37 +40,35 @@ namespace BWDPerf.Transforms.Modeling
         {
             var p = new Prediction(length);
             p.Probabilities.AsSpan().Fill(1d / length);
+            p.IsNormalized = true;
+            Console.WriteLine("[Predictions toolset] Returning a uniform distribution");
             return p;
-        }
-
-        public static Prediction FromSymbol(int symbolIndex, int symbolCount)
-        {
-            var prediction = new Prediction(symbolCount);
-            prediction[symbolIndex] = 1;
-            return prediction;
         }
 
         public static Prediction operator* (Prediction p, double weight)
         {
+            var pW = new Prediction(p.Length);
             for (int i = 0; i < p.Length; i++)
-                p[i] *= weight;
-            return p;
+                pW[i] = p[i] * weight;
+            return pW;
         }
 
         public static Prediction operator+ (Prediction p1, Prediction p2)
         {
             if (p1.Length != p2.Length) throw new Exception("Can't mix predictions of different sizes");
+            var p = new Prediction(p1.Length);
             for (int i = 0; i < p1.Length; i++)
-                p1[i] += p2[i];
-            return p1;
+                p[i] = p1[i] + p2[i];
+            return p;
         }
 
         public static Prediction operator- (Prediction p1, Prediction p2)
         {
             if (p1.Length != p2.Length) throw new Exception("Can't mix predictions of different sizes");
+            var p = new Prediction(p1.Length);
             for (int i = 0; i < p1.Length; i++)
-                p1[i] -= p2[i];
-            return p1;
+                p[i] = p1[i] - p2[i];
+            return p;
         }
     }
 }

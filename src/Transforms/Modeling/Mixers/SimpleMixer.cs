@@ -1,18 +1,19 @@
 using System;
+using System.Diagnostics;
 using BWDPerf.Interfaces;
 
 namespace BWDPerf.Transforms.Modeling.Mixers
 {
     public class SimpleMixer : IMixer
     {
+
         public IModel[] Models { get; }
         private double Weight { get; set; }
-        private double LearningRate { get; } = 0.08;
+        private double LearningRate { get; } = 0.1;
         private Prediction Prediction { get; set; }
         private Prediction Prediction1 { get; set; }
         private Prediction Prediction2 { get; set; }
-
-        public int TotalPredictions { get; set; } = 0;
+        private double _epsilon = 0.000001;
 
         public SimpleMixer(IModel model1, IModel model2)
         {
@@ -23,14 +24,12 @@ namespace BWDPerf.Transforms.Modeling.Mixers
 
         public Prediction Predict()
         {
-            var prediction1 = this.Models[0].Predict();
-            var prediction2 = this.Models[1].Predict();
+            this.Prediction1 = this.Models[0].Predict();
+            this.Prediction2 = this.Models[1].Predict();
             var w = Sigmoid(this.Weight);
-            var p = prediction1 * w + prediction2 * (1 - w);
+            var p = this.Prediction1 * w + this.Prediction2;
             p.Normalize();
             this.Prediction = p;
-            this.Prediction1 = prediction1;
-            this.Prediction2 = prediction2;
             return p;
         }
 
@@ -38,17 +37,31 @@ namespace BWDPerf.Transforms.Modeling.Mixers
         {
             this.Models[0].Update(symbolIndex);
             this.Models[1].Update(symbolIndex);
-            // This is assuming that ground truth is the current symbol e.g. (0, 0, 1, 0)
-            // KL divergence converges slower here for some reason.
-            // I'm using log2(1 - p) as the cost. This is its derivative
-            var dc = this.Prediction[symbolIndex] / ((1 - this.Prediction[symbolIndex]) * Math.Log(2));
-            var ds = Sigmoid(this.Weight);
-            ds = ds * (1-ds);
-            var df = this.Prediction1[symbolIndex] - this.Prediction2[symbolIndex];
-            // Calculate the derivatives and update the weight
-            var dw = ds * df * dc * this.LearningRate;
+
+            var p_sum = this.Prediction1.Sum();
+            var q_sum = this.Prediction2.Sum();
+            var p_i = this.Prediction1[symbolIndex];
+            var q_i = this.Prediction2[symbolIndex];
+            var z = this.Prediction[symbolIndex];
+            var phi = Sigmoid(this.Weight);
+
+            // var Dloss = 1 / (z * Math.Log(2) + _epsilon);
+            // var loss = Math.Log2(z + _epsilon) * Math.Log2(z + _epsilon);
+            var Dloss = Math.Log2(z + _epsilon) / (z * Math.Log(2) + _epsilon);
+            var g = phi * p_sum + q_sum;
+            var DzDphi = (p_i * q_sum - p_sum * q_i) / (g * g + _epsilon);
+            var DphiDw = phi * (1 - phi);
+            var dw = Dloss * DzDphi * DphiDw * this.LearningRate;
+            if (double.IsNaN(phi)) throw new Exception("Phi was NaN");
+            if (double.IsNaN(dw)) throw new Exception("Dw was NaN");
             this.Weight = this.Weight - dw;
+
+            if (++C % 1000 == 0)
+                Console.WriteLine($"{C} Prediction: {z}; Phi: {phi}; dPhi: {dw / DphiDw}");
+            // Console.WriteLine($"p1 sum: {p_sum}, p2 sum: {q_sum}");
+            // Console.WriteLine($"p1 pred: {p_i}, p2 pred: {q_i}");
         }
+        int C = 0;
 
         double Sigmoid(double x) => 1 / (1 + Math.Exp(-x));
     }

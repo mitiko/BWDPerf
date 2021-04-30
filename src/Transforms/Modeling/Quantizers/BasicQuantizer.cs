@@ -11,7 +11,18 @@ namespace BWDPerf.Transforms.Modeling.Quantizers
 
         public BasicQuantizer(IModel model) => this.Model = model;
 
-        public Prediction Predict() => this.Model.Predict();
+        public Prediction Predict()
+        {
+            // Console.WriteLine("[Quantizer] Pre-prediction");
+            var p = this.Model.Predict();
+            // Console.WriteLine("[Quantizer] Post-prediction");
+            if (!p.IsNormalized)
+            {
+                Console.WriteLine("Quantizer is normalizing");
+                p.Normalize();
+            }
+            return p;
+        }
 
         public (uint cdf, uint freq) Encode(int symbolIndex, Prediction prediction)
         {
