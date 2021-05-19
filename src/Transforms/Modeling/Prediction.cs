@@ -2,11 +2,10 @@ using System;
 
 namespace BWDPerf.Transforms.Modeling
 {
+    // Represents a probability distribution for a given alphabet
+    // p[i] is the probability that the symbol alphabet[i] will occur
     public class Prediction
     {
-        // Represents a probability distribution for a given alphabet
-        // p[i] is the probability that the symbol alphabet[i] will occur
-        // private double[] Probabilities { get; }
         private double[] Probabilities { get; }
         public double this[int index]
         {
@@ -20,9 +19,9 @@ namespace BWDPerf.Transforms.Modeling
 
         public void Normalize()
         {
+            if (this.IsNormalized == true) return;
             this.IsNormalized = true;
             double sum = this.Sum();
-            // Console.WriteLine($"[Predictions toolset] Normalizing. sum: {sum}");
             if (sum == 0) { this.Probabilities.AsSpan().Fill(1d / this.Length); return; }
             for (int i = 0; i < this.Length; i++)
                 this.Probabilities[i] /= sum;

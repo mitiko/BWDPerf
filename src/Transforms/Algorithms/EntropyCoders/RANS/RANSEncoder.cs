@@ -39,15 +39,12 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANS
                 for (int i = 0; i < buffer.Length; i++)
                 {
                     var symbol = this.Alphabet[buffer.Span[i]];
-                    // var prediction = i > 10 ? this.Model.Predict() : Prediction.Uniform(this.Alphabet.Length);
-                    // Console.WriteLine("[Encoder] Encoding (pre-prediction)");
-                    var (cdf, freq) = this.Model.Encode(symbol, this.Model.Predict());
-                    // Console.WriteLine("[Encoder] Encoding (post-prediction)");
+                    var pred = this.Model.Predict();
+                    pred.Normalize();
+                    var (cdf, freq) = this.Model.Encode(symbol, pred);
                     cdfs[i] = cdf;
                     freqs[i] = freq;
-                    // Console.WriteLine("[Encoder] Updating model (pre-update)");
                     this.Model.Update(symbol);
-                    // Console.WriteLine("[Encoder] Updating model (post-update)");
                 }
 
                 var stream = new Stack<byte>(capacity: buffer.Length / 2);

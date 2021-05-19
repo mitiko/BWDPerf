@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using BWDPerf.Interfaces;
 
 namespace BWDPerf.Transforms.Modeling.Quantizers
@@ -13,14 +12,8 @@ namespace BWDPerf.Transforms.Modeling.Quantizers
 
         public Prediction Predict()
         {
-            // Console.WriteLine("[Quantizer] Pre-prediction");
             var p = this.Model.Predict();
-            // Console.WriteLine("[Quantizer] Post-prediction");
-            if (!p.IsNormalized)
-            {
-                Console.WriteLine("Quantizer is normalizing");
-                p.Normalize();
-            }
+            if (!p.IsNormalized) p.Normalize();
             return p;
         }
 

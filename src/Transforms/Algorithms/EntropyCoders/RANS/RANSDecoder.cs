@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using BWDPerf.Interfaces;
@@ -45,10 +44,10 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANS
                 state = eFreq * (state >> n) + (state & mask) - eCDF;
                 this.Model.Update(symbol);
 
-                // Check if EOF and read bytes into the queue
+                // Check if EOF and read bytes from the stream to write into the queue
                 while (byteQueue.Count <= 8 && await enumerator.MoveNextAsync())
                     byteQueue.Enqueue(enumerator.Current);
-                if (byteQueue.Count == 0)
+                if (byteQueue.Count == 0 && state <= _L)
                     break;
 
                 // Read bytes into the state (renormalization)
