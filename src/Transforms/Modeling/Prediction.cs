@@ -44,7 +44,7 @@ namespace BWDPerf.Transforms.Modeling
             return p;
         }
 
-        public static Prediction operator* (Prediction p, double weight)
+        public static Prediction operator* (double weight, Prediction p)
         {
             var pW = new Prediction(p.Length);
             for (int i = 0; i < p.Length; i++)

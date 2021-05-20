@@ -28,7 +28,7 @@ namespace BWDPerf.Transforms.Modeling.Mixers
             this.Prediction2.Normalize();
             var w = Sigmoid(this.Weight);
             // Interpolate between model1 and model2 as 0 <= w <= 1
-            this.Prediction = this.Prediction1 * w + this.Prediction2 * (1 - w);
+            this.Prediction = w * this.Prediction1 + (1 - w) * this.Prediction2;
             return this.Prediction;
         }
 
