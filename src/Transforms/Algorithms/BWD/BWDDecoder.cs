@@ -19,7 +19,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 var (dictionary, indexSize) = await ReadDictionary(enumerator, (int) dictionarySize);
                 int streamLength = (int) await ReadInteger(enumerator);
 
-                var stream = new List<int>(capacity: streamLength);
+                var stream = new List<ushort>(capacity: streamLength);
                 var bits = new Queue<bool>();
 
                 // Read from stream
@@ -28,7 +28,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     // Read from bit queue
                     while (bits.Count >= indexSize && symbolsRead < streamLength)
                     {
-                        int index = ReadFromBitQueue(ref bits, indexSize);
+                        ushort index = ReadFromBitQueue(ref bits, indexSize);
                         stream.Add(index);
                         symbolsRead++;
                     }
@@ -63,9 +63,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             return (dictionary, indexSize);
         }
 
-        private int ReadFromBitQueue(ref Queue<bool> bits, int bitsPerWord)
+        private ushort ReadFromBitQueue(ref Queue<bool> bits, int bitsPerWord)
         {
-            int n = 0;
+            ushort n = 0;
             for (int j = 0; j < bitsPerWord; j++)
             {
                 n <<= 1;

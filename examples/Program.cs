@@ -1,17 +1,12 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Jobs;
-using BenchmarkDotNet.Running;
 using BWDPerf.Architecture;
-using BWDPerf.Tools;
 using BWDPerf.Transforms.Algorithms.BWD;
+using BWDPerf.Transforms.Algorithms.BWD.Matching;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 using BWDPerf.Transforms.Algorithms.BWD.Ranking;
 using BWDPerf.Transforms.Algorithms.EntropyCoders.RANS;
-using BWDPerf.Transforms.Modeling;
 using BWDPerf.Transforms.Modeling.Alphabets;
 using BWDPerf.Transforms.Modeling.Mixers;
 using BWDPerf.Transforms.Modeling.Submodels;
@@ -71,35 +66,5 @@ class Program
         // Write some stats
         var correctDecode = File.ReadAllBytes(_file).SequenceEqual(File.ReadAllBytes("decoded.rans"));
         Console.WriteLine($"Correct decode: {correctDecode}");
-    }
-}
-
-public class BWDBenchmark
-{
-    [Benchmark]
-    public async Task Compress()
-    {
-        var options = new Options(maxWordSize: 12);
-        var ranking = new EntropyRanking();
-        // var ranking = new NaiveRanking(options);
-        var encodeTask = new BufferedFileSource("/home/mitiko/Documents/Projects/Compression/BWDPerf/data/enwik4", 100_000_000)
-            // .ToCoder(new CapitalConversion())
-            .ToCoder(new BWDEncoder(options, ranking))
-            .ToCoder<BWDBlock, BWDBlock>(new MeasureEntropy())
-            .ToCoder(new BlockToBytes())
-            .Serialize(new SerializeToFile("encoded"));
-
-        await encodeTask;
-    }
-
-    [Benchmark]
-    public async Task Decompress()
-    {
-        var decodeTask = new FileSource("encoded")
-            .ToDecoder(new BWDRawDecoder())
-            .ToDecoder(new BlockToBytes())
-            .Serialize(new SerializeToFile("decoded"));
-
-        await decodeTask;
     }
 }

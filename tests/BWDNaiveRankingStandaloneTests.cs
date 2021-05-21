@@ -1,10 +1,10 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using BWDPerf.Architecture;
 using BWDPerf.Transforms.Algorithms.BWD;
+using BWDPerf.Transforms.Algorithms.BWD.Matching;
 using BWDPerf.Transforms.Algorithms.BWD.Ranking;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
@@ -14,7 +14,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace BWDPerf.Tests
 {
     [TestClass]
-    public class BWDStandaloneTests
+    public class BWDNaiveRankingStandaloneTests
     {
         private const string _enwik4 = "../../../../data/enwik4";
         private const string _compressedFile = "../../../enwik4.bwd";
@@ -22,16 +22,18 @@ namespace BWDPerf.Tests
 
         [TestMethod]
         public async Task OneDictionary() =>
-            await RunBWDWithOptions(new Options(maxWordSize: 12), 100_000); // 100KB
+            await RunBWDWithOptions(bufferSize: 100_000); // 100KB
 
         [TestMethod]
         public async Task MultipleDictionaries() =>
-            await RunBWDWithOptions(new Options(maxWordSize: 12), 1_000); // 1KB
+            await RunBWDWithOptions(bufferSize: 1_000); // 1KB
 
-        private async Task RunBWDWithOptions(Options options, int bufferSize)
+        private async Task RunBWDWithOptions(int bufferSize)
         {
+            var ranking = new NaiveRanking(150);
+            var matching = new LCPMatchFinder();
             var compressTask = new BufferedFileSource(_enwik4, bufferSize)
-                .ToCoder(new BWDEncoder(options, new NaiveRanking(options)))
+                .ToCoder(new BWDEncoder(ranking, matching))
                 .ToCoder(new BlockToBytes())
                 .Serialize(new SerializeToFile(_compressedFile));
 

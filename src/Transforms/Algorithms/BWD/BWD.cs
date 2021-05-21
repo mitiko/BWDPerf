@@ -1,79 +1,90 @@
 using System;
-using System.Linq;
 using BWDPerf.Interfaces;
-using BWDPerf.Tools;
-using BWDPerf.Transforms.Algorithms.BWD.Counting;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD
 {
     internal class BWD
     {
-        internal Options Options { get; }
         internal IBWDRanking Ranking { get; }
-        internal DynamicWordCounting WordCounter { get; } = new();
-        internal SuffixArray SA { get; set; }
-        internal BitVector BitVector { get; private set; }
+        internal IBWDMatching MatchFinder { get; }
+        internal BWDIndex BWDIndex { get; private set; }
 
-        internal BWD(Options options, IBWDRanking ranking)
+        internal BWD(IBWDRanking ranking, IBWDMatching matchFinder)
         {
-            this.Options = options;
             this.Ranking = ranking;
+            this.MatchFinder = matchFinder;
         }
 
         internal BWDictionary CalculateDictionary(ReadOnlyMemory<byte> buffer)
         {
+            // Initialize the index
+            this.BWDIndex = new BWDIndex(buffer);
+            // Initialize the match finder and ranking
+            this.MatchFinder.Initialize(this.BWDIndex);
+            this.Ranking.Initialize(this.BWDIndex);
+
             var timer = System.Diagnostics.Stopwatch.StartNew();
+
+            // Initialize the dictionary
             var dictionary = new BWDictionary();
-
-            this.SA = new SuffixArray(buffer); // O(b log m) construction
-            Console.WriteLine($"Suffix array took: {timer.Elapsed}"); timer.Restart();
-            this.BitVector = new BitVector(buffer.Length, bit: true); // initialize with all bits set
-            this.WordCounter.CountAllWords(buffer, this.SA, this.BitVector, this.Options.MaxWordSize);
-            Console.WriteLine($"Initial count took: {timer.Elapsed}"); timer.Restart();
-            int count1 = 0, count2 = 0;
-            foreach (var wordCount in this.WordCounter.Counts)
+            for (int i = 0; !this.BWDIndex.BitVector.IsEmpty(); i++)
             {
-                if (wordCount.Value == 1)
-                    count1++;
-                if (wordCount.Value == 2)
-                    count2++;
-            }
-            Console.WriteLine($"Words with count 1: {count1}");
-            Console.WriteLine($"Words with count 2: {count2}");
-            Console.WriteLine($"Total words: {this.WordCounter.Counts.Count}");
+                // 0xFFFF is reserved. 0x0000-0x0100 is for single characters.
+                // This implies max dict size is 65278 words.
+                // Note no backwards compatibility is ensured!
+                if (i == ushort.MaxValue - 256) break;
+                foreach (var match in this.MatchFinder.GetMatches())
+                    this.Ranking.Rank(match);
 
-            this.Ranking.Initialize(buffer);
-
-            var rankingTime = new TimeSpan();
-            var countingTime = new TimeSpan();
-            // if there's no more words to encode, we're done
-            for (int i = 0; !this.BitVector.IsEmpty(); i++)
-            {
-                // TODO: Maybe rank words with count > 1 until there are no more, then do a full count again
-                foreach (var wordCount in this.WordCounter.Counts)
-                    this.Ranking.Rank(wordCount.Key, wordCount.Value, buffer);
-                rankingTime += timer.Elapsed; timer.Restart();
-
-                var word = this.Ranking.GetTopRankedWords()[0].Word;
+                var rankedWord = this.Ranking.GetTopRankedWords()[0];
+                var word = rankedWord.Word;
+                if (word.Equals(Word.Empty))
+                    break;
                 dictionary[i] = buffer.Slice(word.Location, word.Length).ToArray();
+                PrintWord(rankedWord);
 
-                var str = "";
-                foreach (var symbol in dictionary[i].Span)
-                    str += (char) symbol;
-                Console.WriteLine($"word -- '{str}'; {word.Location} {word.Length}");
-
-                this.WordCounter.RecountSelectedWord(word, buffer, this.SA, this.BitVector, this.Options.MaxWordSize);
-                countingTime += timer.Elapsed; timer.Restart();
-
-                // if (i % 100 == 0)
-                    Console.WriteLine($"Calculated #{i} words");
+                this.BWDIndex.MarkWordAsUnavailable(word);
             }
+
+            var elapsedTime = timer.Elapsed;
             Console.WriteLine($"Dict size is {dictionary.Count}");
-            Console.WriteLine($"Total ranking time: {rankingTime}; Avg: {rankingTime / dictionary.Count}");
-            Console.WriteLine($"Total counting time: {countingTime}; Avg: {countingTime / dictionary.Count}");
+            Console.WriteLine($"Time to compute dictionary: {elapsedTime}");
+            if (dictionary.Count != 0) Console.WriteLine($"Avg time spent per word: {elapsedTime / dictionary.Count}");
+
+            // If there are no more good words, add the remaining of the individual symbols to the dictionary
+            // TODO: Extract this in BWDIndex.ExtractSingleCharacters or smth.
+            for (int i = dictionary.Count; !this.BWDIndex.BitVector.IsEmpty(); i++)
+            {
+                var symbol = Word.Empty;
+                for (int j = 0; j < buffer.Length; j++)
+                {
+                    if (this.BWDIndex.BitVector[j])
+                    {
+                        symbol = new Word(j, 1);
+                        this.BWDIndex.MarkWordAsUnavailable(symbol);
+                        break;
+                    }
+                }
+                dictionary[i] = buffer.Slice(symbol.Location, symbol.Length);
+            }
 
             return dictionary;
+        }
+
+        private void PrintWord(RankedWord rw)
+        {
+            var str = "";
+            var loc = rw.Word.Location;
+            var len = rw.Word.Length;
+            var bytes = this.BWDIndex.Buffer
+                .Slice(loc, len)
+                .ToArray()
+                .AsSpan();
+            foreach (var symbol in bytes)
+                str += (char) symbol;
+
+            Console.WriteLine($"word -- '{str}'; ({loc}, {len}, {rw.Count}) -- {rw.Rank}");
         }
     }
 }

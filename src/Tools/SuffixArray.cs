@@ -7,6 +7,7 @@ namespace BWDPerf.Tools
         private int[] SA { get; }
 
         public int this[int index] => this.SA[index];
+        public int[] this[Range range] => this.SA[range];
         public int Length => this.SA.Length;
 
         public SuffixArray(ReadOnlyMemory<byte> data, int maxWord = -1)
@@ -96,17 +97,20 @@ namespace BWDPerf.Tools
             cn = null;
         }
 
-        public void Print(ReadOnlyMemory<byte> data)
+        public void Print(ReadOnlyMemory<byte> data, int startIndex = 0, int endIndex = -1, int wordLength = -1)
         {
+            if (endIndex == -1) endIndex = this.SA.Length;
             Console.WriteLine("Suffix array:");
             foreach (var x in this.SA)
-                Console.WriteLine($"{x.ToString("00")} -- {GetWord(x)}");
-            string GetWord(int index)
+                Console.WriteLine($"{x.ToString("00")} -- {GetWord(x, wordLength)}");
+
+            string GetWord(int index, int len)
             {
-                var word = data.Slice(index, this.SA.Length - index);
+                if (len == -1) len = this.SA.Length - index;
+                var word = data.Slice(index, len);
                 var str = "\"";
                 foreach (var sym in word.Span)
-                    str += (char) sym;
+                    str += sym == '\n' ? "\\n" : (char) sym;
                 str += "\"";
                 return str;
             }
