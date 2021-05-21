@@ -1,0 +1,58 @@
+# v0.4 Todos
+
+Those are some of the main todos for v0.4
+The goal of this release is to patch everything up, get it running smoothly, make it easy to get started with.
+I'm not looking for the perfect architecture or extreme speed, just a good domain based approach with great extensibility and not too bad speed.
+
+## BWD Decoder
+
+BWD decoder needs some refactoring. What is its' most abstract purpose?  
+Can we serialize the dictionary into a single file and work on the stream?  
+Can we import the dictionary from a file and split the stream to get a BWDStream?  
+Can we make a wrapper for BWDStream so we can use regular entropy coding and models?
+
+## Static order-0
+
+Static order-0 model from a config. A simple config with the occurence values for some file.
+Then the static model will not increment but decrement the occurence dictionary and be adaptive.
+
+Will need a  
+`static StaticOrder0 StaticOrder0.FromConfig(fileName)` and a  
+`class StaticOrder0.SaveConfig(fileName) : ICoder`.
+
+## Tests
+
+I added a lot more features than simple order-0 entropy coding and entropy ranking.  
+We need tests for most if not all transforms.  
+We need tests for a lot of models and mixers - those are more integration tests.  
+Modify my local code that runs tests on commit to run tests on commit only for main branch and maybe prompt me to run the tests if I need to.
+
+## Cleanup and refactor
+
+We don't need BlockToBytes, Converters, etc. There's some legacy code that needs to be removed.  
+Try to rename some stuff. I especiall don't like the old stuff like "serializers" and "sources", transforms are ok.  
+Make an effort to make a clear distinction between transform tools and tools.  
+Make some math functions inline.  
+Add `Debug.Assert` statements.
+
+After all is done, make a full review of every file. There shouldn't be a single method I don't like reading or don't immediately understand the purpose of.
+
+## Readme
+
+Update the readme.  
+Very important to add more visuals and explain how the algorithm works simply.  
+The bigger repos have a README in important directories and Github shows them - this is cool, try it out.
+Make sure to note important directories have a README in the wiki/docs
+
+## Repo care + presentation
+
+Add more articles on gh-pages (especially the math ones)  
+Fix math fonts and such, just make it work simply  
+Use the logo  
+Do docs, explain the algorithm, add visuals  
+Add a community guidelines  
+Very Important to make a distinction as to what goes in the wiki and what goes in the docs and gets hosted on gh-pages.  
+-- Non so important --  
+Add discussions  
+Add links from cool gh-articles to discussions  
+Explore jekyll
