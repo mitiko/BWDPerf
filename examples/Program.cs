@@ -37,9 +37,7 @@ class Program
         var modelC = new ByteOrder2(alphabet.Length);
         var modelD = new ByteOrder3(alphabet.Length);
         var modelE = new ByteOrder4(alphabet.Length);
-        // var model = new SimpleMixer(modelB, modelA);
         var model = new Mixer(lr: 0.15, n: alphabet.Length, modelE, modelD, modelC, modelB, modelA);
-        // var model = new SimpleMixer(new SimpleMixer(modelD, modelB), new SimpleMixer(modelC, modelA));
         var quantizer = new BasicQuantizer(model);
         var compressTask = new BufferedFileSource(_file, 1_000_000) // 1MB
                 .ToCoder(new RANSEncoder<byte>(alphabet, quantizer))
@@ -61,9 +59,7 @@ class Program
         var modelC1 = new ByteOrder2(alphabet.Length);
         var modelD1 = new ByteOrder3(alphabet.Length);
         var modelE1 = new ByteOrder4(alphabet.Length);
-        // var model1 = new SimpleMixer(modelB1, modelA1);
-        var model1 = new Mixer(lr: 0.15, n: alphabet.Length, modelE1, modelD1, modelC1, modelB1, modelA1);
-        // var model1 = new SimpleMixer(new SimpleMixer(modelD1, modelB1), new SimpleMixer(modelC1, modelA1));
+        var model1 = new Mixer(lr: 0.15, n: alphabet.Length, modelE1, modelD, modelC1, modelB1, modelA1);
         var quantizer1 = new BasicQuantizer(model1);
         var decompressTask = new FileSource("encoded.rans")
             .ToDecoder(new RANSDecoder<byte>(alphabet, quantizer1))

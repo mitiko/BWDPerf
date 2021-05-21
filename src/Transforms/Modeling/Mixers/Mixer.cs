@@ -10,10 +10,10 @@ namespace BWDPerf.Transforms.Modeling.Mixers
         private Prediction Prediction { get; set; }
         private double[] Weights { get; set; }
         private double[] ActivatedWeights { get; set; }
-        // TODO: Write bias code
-        private double[] Bias { get; set; }
         private double LearningRate { get; set; }
         private readonly double _epsilon = 0.00001;
+        private readonly int N; // symbol count
+        private readonly int M; // model count
 
         public Mixer(double lr = 0.1, int n = 256, params IModel[] models)
         {
@@ -21,14 +21,15 @@ namespace BWDPerf.Transforms.Modeling.Mixers
             this.Predictions = new Prediction[models.Length];
             this.Weights = new double[models.Length];
             this.ActivatedWeights = new double[models.Length];
-            this.Bias = new double[n];
             this.LearningRate = lr;
+            this.N = n;
+            this.M = models.Length;
         }
 
         public Prediction Predict()
         {
-            this.Prediction = new Prediction(this.Bias.Length);
-            for (int i = 0; i < Models.Length; i++)
+            this.Prediction = new Prediction(N);
+            for (int i = 0; i < M; i++)
             {
                 this.Predictions[i] = this.Models[i].Predict(); // Predict
                 this.Predictions[i].Normalize(); // Normalize
@@ -43,8 +44,8 @@ namespace BWDPerf.Transforms.Modeling.Mixers
         {
             var p = this.Prediction[symbolIndex];
             var s = 0.0d;
-            var P = new double[this.Models.Length];
-            for (int i = 0; i < Models.Length; i++)
+            var P = new double[M];
+            for (int i = 0; i < M; i++)
             {
                 this.Models[i].Update(symbolIndex);
                 P[i] = this.Predictions[i][symbolIndex];
@@ -52,7 +53,7 @@ namespace BWDPerf.Transforms.Modeling.Mixers
             }
 
             var DLoss = -1 / (p * Math.Log(2) + _epsilon);
-            for (int i = 0; i < Models.Length; i++)
+            for (int i = 0; i < M; i++)
             {
                 var DpDP_i = (P[i] - p) / s;
                 var DP_iDw = this.ActivatedWeights[i] * (1 - this.ActivatedWeights[i]);
@@ -61,20 +62,7 @@ namespace BWDPerf.Transforms.Modeling.Mixers
                 if (double.IsNaN(this.ActivatedWeights[i])) throw new Exception($"sig(w)[{i}] was NaN");
                 this.Weights[i] -= dw;
             }
-
-            if (++C % 100_000 == 0)
-            {
-                // string _p = "";
-                // for (int i = 0; i < Models.Length; i++)
-                //     _p += $"{P[i]} ";
-                // Console.WriteLine($"probs: {_p}");
-                string _w = "";
-                for (int i = 0; i < Models.Length; i++)
-                    _w += $"{this.ActivatedWeights[i]/s} ";
-                Console.WriteLine($"weights: {_w}");
-            }
         }
-        int C = 0;
 
         private double Sigmoid(double x) => 1 / (1 + Math.Exp(-x));
     }

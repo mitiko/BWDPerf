@@ -4,7 +4,7 @@ using BWDPerf.Interfaces;
 namespace BWDPerf.Transforms.Modeling.Mixers
 {
     // Returns a normalized mix of two models
-    public class SimpleMixer : IMixer
+    public class Mixer2 : IMixer
     {
         public IModel[] Models { get; }
         private double Weight { get; set; }
@@ -14,7 +14,7 @@ namespace BWDPerf.Transforms.Modeling.Mixers
         private Prediction Prediction2 { get; set; }
         private double _epsilon = 0.000001; // The double.Epsilon is too small and becomes infinity when dividing
 
-        public SimpleMixer(IModel model1, IModel model2)
+        public Mixer2(IModel model1, IModel model2)
         {
             this.Models = new IModel[] { model1, model2 };
             this.Weight = 0; // This goes through sigmoid, so the actual initial used weight will be 0.5
