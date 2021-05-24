@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using BWDPerf.Interfaces;
 using BWDPerf.Tools;
 
@@ -9,11 +10,11 @@ namespace BWDPerf.Transforms.Modeling.Submodels
     {
         public Dictionary<ulong, OccurenceDictionary<ushort>> Counts { get; set; } = new();
         public ulong State { get; set; }
-        public int SymbolCount { get; }
+        public int N { get; }
 
         public UShortOrder4(int symbolCount)
         {
-            this.SymbolCount = symbolCount;
+            this.N = symbolCount;
             if (symbolCount > 65536) throw new NotImplementedException("UShortOrder4 model supports only ushort alphabets [0-65535]");
         }
 
@@ -21,17 +22,19 @@ namespace BWDPerf.Transforms.Modeling.Submodels
         {
             if (this.Counts.ContainsKey(this.State))
             {
-                var p = new Prediction(this.SymbolCount);
+                var p = new Prediction(this.N);
                 var oc = this.Counts[this.State];
                 foreach (var count in oc)
                     p[count.Key] = count.Value;
                 return p;
             }
-            else return new Prediction(this.SymbolCount);
+            else return new Prediction(this.N);
         }
 
         public void Update(int symbolIndex)
         {
+            Debug.Assert(symbolIndex <= ushort.MaxValue, "Alphabet has more symbols than reported");
+
             var s = (ushort) symbolIndex;
             if (!this.Counts.ContainsKey(this.State)) this.Counts[this.State] = new();
             this.Counts[this.State].Add(s);

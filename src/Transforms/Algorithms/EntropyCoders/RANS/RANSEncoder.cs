@@ -36,6 +36,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANS
 
                 uint state = _L;
                 int n = this.Model.Accuracy;
+                int tenPercent = buffer.Length / 10;
                 for (int i = 0; i < buffer.Length; i++)
                 {
                     var symbol = this.Alphabet[buffer.Span[i]];
@@ -45,8 +46,10 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANS
                     cdfs[i] = cdf;
                     freqs[i] = freq;
                     this.Model.Update(symbol);
+                    if (i % tenPercent == 0) Console.WriteLine($"[RANS] Predicted {10 * i / tenPercent}%");
                 }
 
+                Console.WriteLine("[RANS] Started coding");
                 var stream = new Stack<byte>(capacity: buffer.Length / 2);
                 for (int i = buffer.Length - 1; i >= 0 ; i--)
                 {
@@ -61,6 +64,7 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANS
                     }
                     state = ((state / freq) << n) + state % freq + cdf;
                 }
+                Console.WriteLine("[RANS] Ended coding");
 
                 // Output the state at the end. There are optimizations for using log(state) bits, but for now 32 bits is ok
                 var bytes = BitConverter.GetBytes(state);

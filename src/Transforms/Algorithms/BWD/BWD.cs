@@ -1,22 +1,29 @@
 using System;
+using System.Collections.Generic;
 using BWDPerf.Interfaces;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD
 {
-    internal class BWD
+    public class BWD : ICoder<ReadOnlyMemory<byte>, BWDictionary>
     {
-        internal IBWDRanking Ranking { get; }
-        internal IBWDMatching MatchFinder { get; }
-        internal BWDIndex BWDIndex { get; private set; }
+        private IBWDRanking Ranking { get; }
+        private IBWDMatching MatchFinder { get; }
+        private BWDIndex BWDIndex { get; set; }
 
-        internal BWD(IBWDRanking ranking, IBWDMatching matchFinder)
+        public BWD(IBWDRanking ranking, IBWDMatching matchFinder)
         {
             this.Ranking = ranking;
             this.MatchFinder = matchFinder;
         }
 
-        internal BWDictionary CalculateDictionary(ReadOnlyMemory<byte> buffer)
+        public async IAsyncEnumerable<BWDictionary> Encode(IAsyncEnumerable<ReadOnlyMemory<byte>> input)
+        {
+            await foreach (var buffer in input)
+                yield return CalculateDictionary(buffer);
+        }
+
+        private BWDictionary CalculateDictionary(ReadOnlyMemory<byte> buffer)
         {
             // Initialize the index
             this.BWDIndex = new BWDIndex(buffer);
@@ -28,12 +35,12 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
             // Initialize the dictionary
             var dictionary = new BWDictionary();
-            for (int i = 0; !this.BWDIndex.BitVector.IsEmpty(); i++)
+            for (ushort i = 0; !this.BWDIndex.BitVector.IsEmpty(); i++)
             {
                 // 0xFFFF is reserved. 0x0000-0x0100 is for single characters.
                 // This implies max dict size is 65278 words.
-                // Note no backwards compatibility is ensured!
-                if (i == ushort.MaxValue - 256) break;
+                // Note no backwards compatibility is ensured yet
+                if (i == ushort.MaxValue - 256) break; // We're actually wasting some space on fully-covered characters?
                 foreach (var match in this.MatchFinder.GetMatches())
                     this.Ranking.Rank(match);
 
@@ -54,7 +61,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 
             // If there are no more good words, add the remaining of the individual symbols to the dictionary
             // TODO: Extract this in BWDIndex.ExtractSingleCharacters or smth.
-            for (int i = dictionary.Count; !this.BWDIndex.BitVector.IsEmpty(); i++)
+            for (ushort i = (ushort) dictionary.Count; !this.BWDIndex.BitVector.IsEmpty(); i++)
             {
                 var symbol = Word.Empty;
                 for (int j = 0; j < buffer.Length; j++)

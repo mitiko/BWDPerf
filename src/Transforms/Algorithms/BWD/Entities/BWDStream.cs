@@ -3,23 +3,16 @@ using System.Collections.Generic;
 
 namespace BWDPerf.Transforms.Algorithms.BWD.Entities
 {
-    public class BWDStream
+    public static class BWDStream
     {
-        private ReadOnlyMemory<ushort> Stream { get; set; }
-        public int Length => this.Stream.Length;
-        public ushort this[int index] => this.Stream.Span[index];
-
-        public BWDStream(ReadOnlyMemory<ushort> stream) =>
-            this.Stream = stream;
-
-        public BWDStream(ReadOnlyMemory<byte> buffer, BWDictionary dictionary)
+        public static ReadOnlyMemory<ushort> Parse(ReadOnlyMemory<byte> buffer, BWDictionary dictionary)
         {
             // TODO: without s token, we can do parsing in O(n), by finding the first word that matches
             // NO TODO: Use the FM-index to do parsing in O(n)
             var data = new ushort[buffer.Length];
             data.AsSpan().Fill(ushort.MaxValue);
 
-            for (int i = 0; i < dictionary.Count; i++)
+            for (ushort i = 0; i < dictionary.Count; i++)
             {
                 var word = dictionary[i];
                 for (int j = 0; j < buffer.Length; j++)
@@ -34,7 +27,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
                     if (match == true)
                     {
                         for (int k = 0; k < word.Length; k++)
-                            data[j+k] = (ushort) i;
+                            data[j+k] = i;
                     }
                 }
             }
@@ -47,7 +40,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
                 k += dictionary[data[k]].Length;
             }
 
-            this.Stream = stream.ToArray();
+            return stream.ToArray();
         }
     }
 }

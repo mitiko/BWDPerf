@@ -1,65 +1,47 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using BWDPerf.Interfaces;
 using BWDPerf.Tools;
-using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Tools
 {
-    public class MeasureEntropy : ICoder<byte, byte>, ICoder<BWDBlock, BWDBlock>
+    public class MeasureEntropy : ICoder<byte, byte>, ICoder<ReadOnlyMemory<ushort>, ReadOnlyMemory<ushort>>
     {
-        private OccurenceDictionary<byte> OD { get; } = new();
         private OccurenceDictionary<int> ODInt { get; } = new();
 
         public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<byte> input)
         {
+            var dict = new OccurenceDictionary<byte>();
             await foreach (var symbol in input)
             {
-                this.OD.Add(symbol);
+                dict.Add(symbol);
                 yield return symbol;
             }
 
-            double sum = this.OD.Sum();
+            double sum = dict.Sum();
             double entropy = 0;
-            foreach (var freq in this.OD.Values)
+            foreach (var freq in dict.Values)
                 entropy -= (freq / sum) * Math.Log2(freq / sum);
-            Console.WriteLine($"[{this.GetHashCode()}] Entropy: {entropy}; Count: {this.OD.Count}");
-            this.OD.Clear();
+            Console.WriteLine($"[Entropy] Entropy: {entropy}; Length: {(int) sum}; Symobls: {dict.Count}");
+            Console.WriteLine($"[Entropy] Predicted size: {entropy * sum / 8}");
         }
 
-        public async IAsyncEnumerable<BWDBlock> Encode(IAsyncEnumerable<BWDBlock> input)
+        public async IAsyncEnumerable<ReadOnlyMemory<ushort>> Encode(IAsyncEnumerable<ReadOnlyMemory<ushort>> input)
         {
             await foreach (var block in input)
             {
-                for (int i = 0; i < block.Stream.Length; i++)
-                {
-                    var x = block.Stream[i];
-                    this.ODInt.Add(x);
-                }
+                var dict = new OccurenceDictionary<ushort>();
+                for (int i = 0; i < block.Length; i++)
+                    dict.Add(block.Span[i]);
 
-                // Calculate stream entropy
-                double sum = this.ODInt.Sum();
+                double sum = dict.Sum();
                 double entropy = 0;
-                foreach (var freq in this.ODInt.Values)
+                foreach (var freq in dict.Values)
                     entropy -= (freq / sum) * Math.Log2(freq / sum);
+                Console.WriteLine($"[Entropy] Entropy: {entropy}; Length: {block.Length}; Symbols: {dict.Count}");
+                Console.WriteLine($"[Entropy] Predicted size: {entropy * block.Length / 8}");
 
-                // Calculate dictionary entropy
-                var dictionary = block.Dictionary.Serialize();
-                for (int i = 0; i < dictionary.Length; i++)
-                    this.OD.Add(dictionary.Span[i]);
-
-                sum = this.OD.Sum();
-                double dictEntropy = 0;
-                foreach (var freq in this.OD.Values)
-                    dictEntropy -= (freq / sum) * Math.Log2(freq / sum);
-
-                Console.WriteLine($"[{this.GetHashCode()}] Stream: {entropy}; Stream length: {block.Stream.Length}; Distinct symbols: {this.ODInt.Count}");
-                Console.WriteLine($"[{this.GetHashCode()}] Dictionary: {dictEntropy}; Dictionary length: {dictionary.Length}");
-                Console.WriteLine($"[{this.GetHashCode()}] Total size estimation: {(dictionary.Length * dictEntropy + block.Stream.Length * entropy) / 8} bytes");
                 yield return block;
-                this.ODInt.Clear();
-                this.OD.Clear();
             }
         }
     }

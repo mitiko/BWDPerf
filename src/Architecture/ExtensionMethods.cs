@@ -20,5 +20,18 @@ namespace BWDPerf.Architecture
 
         public static async Task Serialize<Symbol>(this IAsyncEnumerable<Symbol> pipeline, ISerializer<Symbol> serializer) =>
             await serializer.Complete(pipeline);
+
+        public static async IAsyncEnumerable<T> AsAsyncEnumerable<T>(this T block)
+        {
+            await Task.CompletedTask;
+            yield return block;
+        }
+
+        public static async Task<T> First<T>(this IAsyncEnumerable<T> block)
+        {
+            await foreach (var item in block)
+                return item; // Note no yield
+            throw new System.Exception("No elements in sequence");
+        }
     }
 }
