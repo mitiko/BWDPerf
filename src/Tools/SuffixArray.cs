@@ -92,17 +92,13 @@ namespace BWDPerf.Tools
             }
 
             this.SA = p[1..];
-            c = null;
-            pn = null;
-            cn = null;
         }
 
-        public void Print(ReadOnlyMemory<byte> data, int startIndex = 0, int endIndex = -1, int wordLength = -1)
+        public void Print(ReadOnlyMemory<byte> data, int wordLength = -1)
         {
-            if (endIndex == -1) endIndex = this.SA.Length;
             Console.WriteLine("Suffix array:");
             foreach (var x in this.SA)
-                Console.WriteLine($"{x.ToString("00")} -- {GetWord(x, wordLength)}");
+                Console.WriteLine($"{x:00} -- {GetWord(x, wordLength)}");
 
             string GetWord(int index, int len)
             {
@@ -110,7 +106,7 @@ namespace BWDPerf.Tools
                 var word = data.Slice(index, len);
                 var str = "\"";
                 foreach (var sym in word.Span)
-                    str += sym == '\n' ? "\\n" : (char) sym;
+                    str += sym == '\n' ? @"\n" : (char) sym;
                 str += "\"";
                 return str;
             }
@@ -148,7 +144,7 @@ namespace BWDPerf.Tools
             }
 
             if (match == -1)
-                return new int[0];
+                return Array.Empty<int>();
 
             int first = match; // First match inclusive
             int last = match;  // Last  match exclusive

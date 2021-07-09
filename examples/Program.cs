@@ -18,15 +18,14 @@ using System.Linq;
 
 class Program
 {
-    static string _file = "/home/mitiko/Documents/Projects/Compression/BWDPerf/data/calgary/book1";
-    static async Task Main(string[] args)
+    static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\calgary\book1";
+    static async Task Main()
     {
-        var _file = "/home/mitiko/Documents/Projects/Compression/BWDPerf/data/calgary/book1";
         var timer = System.Diagnostics.Stopwatch.StartNew();
 
         // Compresion
         Console.WriteLine("Compressing...");
-        await Compress(loadDictionary: true);
+        await Compress(loadDictionary: false);
         Console.WriteLine($"Compression took: {timer.Elapsed}"); timer.Restart();
 
         // Output stats

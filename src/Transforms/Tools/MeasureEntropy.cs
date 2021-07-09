@@ -7,8 +7,6 @@ namespace BWDPerf.Transforms.Tools
 {
     public class MeasureEntropy : ICoder<byte, byte>, ICoder<ReadOnlyMemory<ushort>, ReadOnlyMemory<ushort>>
     {
-        private OccurenceDictionary<int> ODInt { get; } = new();
-
         public async IAsyncEnumerable<byte> Encode(IAsyncEnumerable<byte> input)
         {
             var dict = new OccurenceDictionary<byte>();

@@ -13,7 +13,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             var enumerator = input.GetAsyncEnumerator();
             var dictionary = new BWDictionary();
             var dictionarySize = await ReadInteger(enumerator);
-            var indexSize = Convert.ToInt32(Math.Ceiling(Math.Log2(dictionarySize)));
 
             for (ushort i = 0; i < dictionarySize; i++)
             {
@@ -26,14 +25,14 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             yield return dictionary;
         }
 
-        private async Task<int> ReadInteger(IAsyncEnumerator<byte> enumerator)
+        private static async Task<int> ReadInteger(IAsyncEnumerator<byte> enumerator)
         {
             var int32Arr = new byte[4];
             for (int k = 0; k < 4; k++) int32Arr[k] = await GetNextByte(enumerator);
             return BitConverter.ToInt32(int32Arr);
         }
 
-        private async Task<byte> GetNextByte(IAsyncEnumerator<byte> enumerator)
+        private static async Task<byte> GetNextByte(IAsyncEnumerator<byte> enumerator)
         {
             if (!await enumerator.MoveNextAsync()) throw new Exception("Problem decoding dictionary");
             return enumerator.Current;

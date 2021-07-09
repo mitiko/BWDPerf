@@ -9,7 +9,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
     public class EntropyRanking : IBWDRanking
     {
         private RankedWord BestWord { get; set; } = RankedWord.Empty;
-        private readonly RankedWord InitialWord = RankedWord.Empty;
         private OccurenceDictionary<ushort> Model { get; set; } = new();
         public BWDIndex BWDIndex { get; private set; }
 

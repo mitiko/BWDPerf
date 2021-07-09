@@ -8,7 +8,7 @@ namespace BWDPerf.Transforms.Serializers
     {
         public async Task Complete(IAsyncEnumerable<Symbol> input)
         {
-            await foreach (var symbol in input) { }
+            await foreach (var _ in input);
         }
     }
 }

@@ -9,7 +9,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
     public class Order1EntropyRanking : IBWDRanking
     {
         private RankedWord BestWord { get; set; } = RankedWord.Empty;
-        private readonly RankedWord InitialWord = RankedWord.Empty;
         private Statistics Model { get; set; } = new();
         private Statistics BestWordModel { get; set; } = new();
         public BWDIndex BWDIndex { get; private set; }
@@ -66,7 +65,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             }
             // 3) Update when the words is a context
             model.Order1.Add(this.WordIndex, new OccurenceDictionary<ushort>());
-            for (int i = locs.Length - ((locs[locs.Length-1] == this.BWDIndex.Length - match.Length) ? 2 : 1); i >= 0 ; i--)
+            for (int i = locs.Length - ((locs[^1] == this.BWDIndex.Length - match.Length) ? 2 : 1); i >= 0 ; i--)
             {
                 model.Order1[this.WordIndex].Add(this.BWDIndex[locs[i]+match.Length]);
                 model.Order1[this.BWDIndex[loc+match.Length-1]].Substract(this.BWDIndex[locs[i]+match.Length]);
