@@ -34,7 +34,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             var (count, loc) = this.BWDIndex.Count(match);
             if (count < 2) return; // Must locate match at at least 2 locations to get gains
 
-            var wordDictionary = new OccurenceDictionary<ushort>();
+            var wordDictionary = new OccurenceDictionary<ushort>(len);
             for (int s = 0; s < len; s++)
                 wordDictionary.Add(this.BWDIndex[loc+s]);
 

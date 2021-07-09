@@ -6,6 +6,7 @@ namespace BWDPerf.Tools
     public class OccurenceDictionary<TKey> : Dictionary<TKey, int>
     {
         public OccurenceDictionary() { }
+        public OccurenceDictionary(int capacity) : base(capacity) { }
         public OccurenceDictionary(OccurenceDictionary<TKey> dictionary) : base(dictionary) { }
 
         public void Add(TKey key)
