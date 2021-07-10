@@ -33,16 +33,13 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANSNibbled
                 Debug.Assert(_L <= state, "State was under bound [L, bL)");
                 Debug.Assert(state < (_L << _logB), "State was over bound [L, bl)");
 
-                // Predict
-                var prediction = this.Model.Predict();
-                
                 // Decode first nibble (symbol)
                 uint cdf = state & mask;
+                var prediction = this.Model.Predict();
                 var s1 = this.Model.Decode(cdf, prediction);
                 var (eCDF1, eFreq1) = this.Model.Encode(s1, prediction);
                 state = eFreq1 * (state >> n) + (state & mask) - eCDF1;
-
-                // Update the state
+                this.Model.Update(s1);
 
                 // Check if EOF and read bytes from the stream to write into the queue
                 while (byteQueue.Count <= 8 && await enumerator.MoveNextAsync())
@@ -56,18 +53,16 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANSNibbled
                 
                 // Decode the second nibble (symbol)
                 cdf = state & mask;
+                prediction = this.Model.Predict();
                 var s2 = this.Model.Decode(cdf, prediction);
                 var (eCDF2, eFreq2) = this.Model.Encode(s2, prediction);
                 state = eFreq2 * (state >> n) + (state & mask) - eCDF2;
+                this.Model.Update(s2);
 
                 // Return the symbol that the two nibbles represent
                 yield return this.Alphabet[(s1, s2)];
 
-                // Update the model
-                this.Model.Update(s1);
-                this.Model.Update(s2);
-
-                // Update the state again (after the secodn nibble decode)
+                // Update the state again (after the second nibble decode)
 
                 // Check if EOF and read bytes from the stream to write into the queue
                 while (byteQueue.Count <= 8 && await enumerator.MoveNextAsync())

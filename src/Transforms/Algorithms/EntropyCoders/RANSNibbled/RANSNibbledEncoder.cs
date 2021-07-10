@@ -45,9 +45,11 @@ namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANSNibbled
                     var pred = this.Model.Predict();
                     pred.Normalize();
                     var (cdf1, freq1) = this.Model.Encode(s1, pred);                    
-                    var (cdf2, freq2) = this.Model.Encode(s2, pred);
-                    
                     this.Model.Update(s1);
+
+                    pred = this.Model.Predict();
+                    pred.Normalize();                    
+                    var (cdf2, freq2) = this.Model.Encode(s2, pred);
                     this.Model.Update(s2);
                     
                     cdfs[2 * i]      = cdf1;

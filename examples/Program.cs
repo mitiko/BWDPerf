@@ -49,31 +49,31 @@ class Program
     private static async Task Compress()
     {
         // Create the model
-        var alphabet = new TextAlphabet();
-        // var alphabet = new NibbleAlphabet();
-        var order0 = new Order0(alphabet.Length);
-        var quantizer = new BasicQuantizer(order0);
+        // var alphabet = new TextAlphabet();
+        var alphabet = new NibbleAlphabet();
+        var order1 = new Order1(alphabet.Length);
+        var quantizer = new BasicQuantizer(order1);
 
         // Compress
         await new BufferedFileSource(_file, 1_000_000)
             .ToCoder<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>(new MeasureEntropy())
-            // .ToCoder(new RANSNibbledEncoder<byte>(alphabet, quantizer))
-            .ToCoder(new RANSEncoder<byte>(alphabet, quantizer))
+            .ToCoder(new RANSNibbledEncoder<byte>(alphabet, quantizer))
+            // .ToCoder(new RANSEncoder<byte>(alphabet, quantizer))
             .Serialize(new SerializeToFile("encoded.nb"));
     }
 
     private static async Task Decompress()
     {
         // Create the model
-        var alphabet = new TextAlphabet();
-        // var alphabet = new NibbleAlphabet();
-        var order0 = new Order0(alphabet.Length);
-        var quantizer = new BasicQuantizer(order0);
+        // var alphabet = new TextAlphabet();
+        var alphabet = new NibbleAlphabet();
+        var order1 = new Order1(alphabet.Length);
+        var quantizer = new BasicQuantizer(order1);
 
         // Decompress
         await new FileSource("encoded.nb")
-            // .ToDecoder(new RANSNibbledDecoder<byte>(alphabet, quantizer))
-            .ToDecoder(new RANSDecoder<byte>(alphabet, quantizer))
+            .ToDecoder(new RANSNibbledDecoder<byte>(alphabet, quantizer))
+            // .ToDecoder(new RANSDecoder<byte>(alphabet, quantizer))
             .Serialize(new SerializeToFile("decoded"));
     }
 }
