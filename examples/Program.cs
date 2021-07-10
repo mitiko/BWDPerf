@@ -15,23 +15,25 @@ using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
 using System.IO;
 using System.Linq;
+using BWDPerf.Transforms.Algorithms.EntropyCoders.RANSNibbled;
 
 class Program
 {
-    static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\calgary\book1";
+    // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\calgary\book1";
+    static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\book11";
     static async Task Main()
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
 
         // Compresion
         Console.WriteLine("Compressing...");
-        await Compress(loadDictionary: false);
+        await Compress();
         Console.WriteLine($"Compression took: {timer.Elapsed}"); timer.Restart();
 
         // Output stats
         var fileName = _file.Split('/').Last();
         var fileSize = new FileInfo(_file).Length;
-        var compressedSize = new FileInfo("encoded.bwd").Length + new FileInfo("dict.bwd").Length;
+        var compressedSize = new FileInfo("encoded.nb").Length;
         Console.WriteLine($"{fileName}: {fileSize} -> {compressedSize}; ratio: {compressedSize * 1d / fileSize}");
 
         // Decompression
@@ -44,58 +46,34 @@ class Program
         Console.WriteLine($"Correct decode: {correctDecode}");
     }
 
-    private static async Task Compress(bool loadDictionary = false)
+    private static async Task Compress()
     {
-        BWDictionary dict;
-        if (loadDictionary)
-        {
-            // Load the dictionary
-            dict = await new FileSource("dict.bwd")
-                .ToDecoder(new BWDictionaryDecoder())
-                .First();
-        }
-        else
-        {
-            // Compute the dictionary
-            dict = await new BufferedFileSource(_file, 1_000_000)
-                .ToCoder(new BWD(new EntropyRanking(), new LCPMatchFinder()))
-                .First();
-
-            // Save the dictionary
-            await dict.AsAsyncEnumerable()
-                .ToCoder(new BWDictionaryEncoder())
-                .Serialize(new SerializeToFile("dict.bwd"));
-        }
-
         // Create the model
-        var alphabet = new DictionaryAlphabet(dict.Keys.ToArray());
+        var alphabet = new TextAlphabet();
+        // var alphabet = new NibbleAlphabet();
         var order0 = new Order0(alphabet.Length);
         var quantizer = new BasicQuantizer(order0);
 
         // Compress
         await new BufferedFileSource(_file, 1_000_000)
-            .ToCoder(new BWDParser(dict))
-            .ToCoder<ReadOnlyMemory<ushort>, ReadOnlyMemory<ushort>>(new MeasureEntropy())
-            .ToCoder(new RANSEncoder<ushort>(alphabet, quantizer))
-            .Serialize(new SerializeToFile("encoded.bwd"));
+            .ToCoder<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>(new MeasureEntropy())
+            // .ToCoder(new RANSNibbledEncoder<byte>(alphabet, quantizer))
+            .ToCoder(new RANSEncoder<byte>(alphabet, quantizer))
+            .Serialize(new SerializeToFile("encoded.nb"));
     }
 
     private static async Task Decompress()
     {
-        // Load the dictionary
-        var dict = await new FileSource("dict.bwd")
-            .ToDecoder(new BWDictionaryDecoder())
-            .First();
-
         // Create the model
-        var alphabet = new DictionaryAlphabet(dict.Keys.ToArray());
+        var alphabet = new TextAlphabet();
+        // var alphabet = new NibbleAlphabet();
         var order0 = new Order0(alphabet.Length);
         var quantizer = new BasicQuantizer(order0);
 
         // Decompress
-        await new FileSource("encoded.bwd")
-            .ToDecoder(new RANSDecoder<ushort>(alphabet, quantizer))
-            .ToDecoder(new BWDDecoder(dict))
+        await new FileSource("encoded.nb")
+            // .ToDecoder(new RANSNibbledDecoder<byte>(alphabet, quantizer))
+            .ToDecoder(new RANSDecoder<byte>(alphabet, quantizer))
             .Serialize(new SerializeToFile("decoded"));
     }
 }
