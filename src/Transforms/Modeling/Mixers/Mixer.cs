@@ -64,6 +64,6 @@ namespace BWDPerf.Transforms.Modeling.Mixers
             }
         }
 
-        private double Sigmoid(double x) => 1 / (1 + Math.Exp(-x));
+        private static double Sigmoid(double x) => 1 / (1 + Math.Exp(-x));
     }
 }

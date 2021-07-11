@@ -19,8 +19,8 @@ using BWDPerf.Transforms.Algorithms.EntropyCoders.RANSNibbled;
 
 class Program
 {
-    // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\calgary\book1";
-    static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\book11";
+    static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\calgary\book1";
+    // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\book11";
     static async Task Main()
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -51,8 +51,10 @@ class Program
         // Create the model
         // var alphabet = new TextAlphabet();
         var alphabet = new NibbleAlphabet();
-        var order1 = new Order1(alphabet.Length);
-        var quantizer = new BasicQuantizer(order1);
+        // var order0 = new Order0(alphabet.Length);
+        // var order1 = new Order1(alphabet.Length);
+        var order3 = new ByteOrder3(alphabet.Length);
+        var quantizer = new BasicQuantizer(order3);
 
         // Compress
         await new BufferedFileSource(_file, 1_000_000)
@@ -67,8 +69,10 @@ class Program
         // Create the model
         // var alphabet = new TextAlphabet();
         var alphabet = new NibbleAlphabet();
-        var order1 = new Order1(alphabet.Length);
-        var quantizer = new BasicQuantizer(order1);
+        // var order0 = new Order0(alphabet.Length);
+        // var order1 = new Order1(alphabet.Length);
+        var order3 = new ByteOrder3(alphabet.Length);
+        var quantizer = new BasicQuantizer(order3);
 
         // Decompress
         await new FileSource("encoded.nb")

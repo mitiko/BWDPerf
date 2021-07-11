@@ -11,7 +11,7 @@ namespace BWDPerf.Transforms.Modeling.Submodels
         public Dictionary<ulong, OccurenceDictionary<ushort>> Counts { get; set; } = new();
         public ulong State { get; set; }
         public int N { get; }
-        private ulong _mask = (1 << 48) - 1;
+        private readonly ulong _mask = (1 << 48) - 1;
 
         public UShortOrder3(int symbolCount)
         {

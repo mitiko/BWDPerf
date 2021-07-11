@@ -12,7 +12,7 @@ namespace BWDPerf.Transforms.Modeling.Mixers
         private Prediction Prediction { get; set; }
         private Prediction Prediction1 { get; set; }
         private Prediction Prediction2 { get; set; }
-        private double _epsilon = 0.000001; // The double.Epsilon is too small and becomes infinity when dividing
+        private const double _epsilon = 0.000001; // The double.Epsilon is too small and becomes infinity when dividing
 
         public Mixer2(IModel model1, IModel model2)
         {
@@ -49,9 +49,9 @@ namespace BWDPerf.Transforms.Modeling.Mixers
             var DphiDw = phi * (1 - phi);
             var dw = DLoss * DzDphi * DphiDw * this.LearningRate;
             if (double.IsNaN(dw)) throw new Exception("Dw was NaN");
-            this.Weight = this.Weight - dw;
+            this.Weight -= dw;
         }
 
-        double Sigmoid(double x) => 1 / (1 + Math.Exp(-x));
+        static double Sigmoid(double x) => 1 / (1 + Math.Exp(-x));
     }
 }
