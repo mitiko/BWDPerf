@@ -7,7 +7,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
     {
         public int Length { get; }
         public SuffixArray SA { get; }
-        public int[] SAinv { get; }
         public BitVector BitVector { get; }
         public LCPArray LCP { get; }
         public ReadOnlyMemory<byte> Buffer { get; }
@@ -22,8 +21,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
                 var timer = System.Diagnostics.Stopwatch.StartNew();
             this.SA = new SuffixArray(buffer);
                 Console.WriteLine($"Suffix array took: {timer.Elapsed}"); timer.Restart();
-            this.LCP = new LCPArray(buffer, this.SA, out var SAinv);
-            this.SAinv = SAinv;
+            this.LCP = new LCPArray(buffer, this.SA, out _);
                 Console.WriteLine($"LCP array took: {timer.Elapsed}"); timer.Stop();
             this.BitVector = new BitVector(buffer.Length, bit: true);
             this.Buffer = buffer;
@@ -32,7 +30,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
                 this.Index.Span[i] = buffer.Span[i];
         }
 
-        public int Count(Match match)
+        public int Count(Match match, out int location)
         {
             var locations = this.SA[match.Index..(match.Index + match.SACount)];
             Array.Sort(locations);
@@ -53,12 +51,13 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
                     count += 1;
                 }
             }
+            location = lastMatch;
             return count;
         }
 
         public int[] Parse(Match match)
         {
-            var locations = this.SA[match.Index..(match.Index + match.Count)];
+            var locations = this.SA[match.Index..(match.Index + match.SACount)];
             Array.Sort(locations);
             return this.Parse(locations, match.Length);
         }

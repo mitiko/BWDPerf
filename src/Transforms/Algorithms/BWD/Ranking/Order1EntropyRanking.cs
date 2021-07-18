@@ -11,6 +11,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         private RankedWord BestWord { get; set; } = RankedWord.Empty;
         private Statistics Model { get; set; } = new();
         private Statistics BestWordModel { get; set; } = new();
+        private IBWDMatchProvider MatchProvider { get; set; }
         public BWDIndex BWDIndex { get; private set; }
 
         // State
@@ -21,11 +22,12 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         private double Ew = 0; // encoded size with the change in dictionary (in bits)
         private double d = 0; // dictionary update in bits
 
-        public void Initialize(BWDIndex BWDIndex)
+        public void Initialize(BWDIndex BWDIndex, IBWDMatchProvider matchProvider)
         {
             // TODO: Start with a bias for initial dictionary overhead
             // Initialize model
             this.BWDIndex = BWDIndex;
+            this.MatchProvider = matchProvider;
             int n = this.BWDIndex.Length;
             for (int i = 0; i < n; i++)
                 this.Model.Order0.Add(this.BWDIndex[i]);
@@ -41,9 +43,11 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 
         public void Rank(Match match)
         {
-            if (match.Length < 2) return; // Rank of single characters is 0
+            // Rank of single characters is 0
+            if (match.Length < 2) { this.MatchProvider.RemoveIfPossible(match); return; }
             var locs = this.BWDIndex.Parse(match); // Get matching locations
-            if (locs.Length < 2) return; // Must locate match at at least 2 locations to get gains
+            // Must locate match at at least 2 locations to get gains
+            if (locs.Length < 2) { this.MatchProvider.RemoveIfPossible(match); return; }
             var loc = locs[0];
 
             // Copy the model

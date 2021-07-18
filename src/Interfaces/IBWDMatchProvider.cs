@@ -9,6 +9,6 @@ namespace BWDPerf.Interfaces
 
         public void Initialize(BWDIndex BWDIndex);
         public IEnumerable<Match> GetMatches();
-        public void RecountWord(Word chosenWord, int[] locations);
+        public void RemoveIfPossible(Match match);
     }
 }

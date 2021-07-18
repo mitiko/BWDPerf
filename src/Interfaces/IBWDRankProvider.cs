@@ -7,7 +7,7 @@ namespace BWDPerf.Interfaces
     {
         public BWDIndex BWDIndex { get; }
 
-        public void Initialize(BWDIndex BWDIndex);
+        public void Initialize(BWDIndex BWDIndex, IBWDMatchProvider matchProvider);
         public void Rank(Match match);
         public List<RankedWord> GetTopRankedWords();
     }

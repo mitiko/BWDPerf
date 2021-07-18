@@ -22,8 +22,8 @@ using BWDPerf.Tools;
 class Program
 {
     // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\file.md";
-    // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\calgary\book1";
-    static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\book11";
+    static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\calgary\book1";
+    // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\book11";
     static async Task Main()
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -89,7 +89,7 @@ class Program
     private static async Task ComputeDict()
     {
         await new BufferedFileSource(_file, 768771)
-            .ToCoder(new BWD(new EntropyRanking(), new LCPTableMatchProvider()))
+            .ToCoder(new BWD(new EntropyRanking(), new LCPMatchFinder()))
             .ToCoder(new BWDictionaryEncoder())
             .Serialize(new SerializeToFile("dict_"));
     }

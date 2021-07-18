@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BWDPerf.Interfaces;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
@@ -29,7 +30,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             this.BWDIndex = new BWDIndex(buffer);
             // Initialize the match finder and ranking
             this.MatchProvider.Initialize(this.BWDIndex);
-            this.RankProvider.Initialize(this.BWDIndex);
+            this.RankProvider.Initialize(this.BWDIndex, this.MatchProvider);
 
             var timer = System.Diagnostics.Stopwatch.StartNew();
 
@@ -51,12 +52,10 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 dictionary[i] = buffer.Slice(word.Location, word.Length).ToArray();
                 PrintWord(rankedWord);
 
-                // TODO: Merge those?
-                this.BWDIndex.MarkWordAsUnavailable(word, out var locations);
-                Console.WriteLine($"Real count: {locations.Length}");
-                if (i == 1) Environment.Exit(1);
-                this.MatchProvider.RecountWord(word, locations);
+                this.BWDIndex.MarkWordAsUnavailable(word, out _);
             }
+
+            Console.WriteLine($"Skip list count after: {this.MatchProvider.GetMatches().Count()}");
 
             var elapsedTime = timer.Elapsed;
             Console.WriteLine($"Dict size is {dictionary.Count}");

@@ -22,11 +22,12 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
                 this.LearnedRanks.Add(i, new Dictionary<int, double>());
         }
 
-        public void Initialize(BWDIndex BWDIndex) => this.BWDIndex = BWDIndex;
+        public void Initialize(BWDIndex BWDIndex, IBWDMatchProvider matchProvider)
+            => this.BWDIndex = BWDIndex;
 
         public void Rank(Match match)
         {
-            var count = this.BWDIndex.Count(match);
+            var count = this.BWDIndex.Count(match, out _);
             if (count < 2 || match.Length < 2) return;
             if (!this.LearnedRanks[match.Length].TryGetValue(count, out var rank))
             {

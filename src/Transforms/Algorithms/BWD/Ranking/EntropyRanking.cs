@@ -10,16 +10,19 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
     {
         private RankedWord BestWord { get; set; } = RankedWord.Empty;
         private OccurenceDictionary<ushort> Model { get; set; } = new();
+        private IBWDMatchProvider MatchProvider { get; set; }
         public BWDIndex BWDIndex { get; private set; }
 
         private int n = 0; // Symbol count
         public ushort wordIndex = 256; // Next word index
 
-        public void Initialize(BWDIndex BWDIndex)
+        public void Initialize(BWDIndex BWDIndex, IBWDMatchProvider matchProvider)
         {
             // TODO: Start with a bias for initial dictionary overhead
             this.BWDIndex = BWDIndex;
+            this.MatchProvider = matchProvider;
             this.n = BWDIndex.Length;
+
             for (int i = 0; i < n; i++)
                 this.Model.Add(this.BWDIndex[i]);
 
@@ -30,9 +33,9 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         public void Rank(Match match)
         {
             var len = match.Length;
-            var count = match.Count;
-            if (len < 2 || count < 2) return; // Must locate match at at least 2 locations to get gains
-            var loc = this.BWDIndex.SA[match.Index];
+            var count = this.BWDIndex.Count(match, out var loc);
+            // Must locate match at at least 2 locations to get gains
+            if (len < 2 || count < 2) { this.MatchProvider.RemoveIfPossible(match); return;}
 
             var wordDictionary = new OccurenceDictionary<ushort>(len);
             for (int s = 0; s < len; s++)
