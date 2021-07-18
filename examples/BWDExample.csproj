@@ -4,10 +4,6 @@
     <ProjectReference Include="..\src\BWDPerf.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ConsoleTables" Version="2.4.2" />
-  </ItemGroup>
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>

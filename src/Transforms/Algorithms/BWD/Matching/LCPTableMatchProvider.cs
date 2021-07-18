@@ -19,7 +19,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
 
             foreach (var match in GenerateMatches())
                 this.Matches.Insert(match);
-            Console.WriteLine($"Skip list took: {timer.Elapsed}");
+
+            Console.WriteLine($"Skip list took: {timer.Elapsed}. Count is: {this.Matches.Count}");
         }
 
         public IEnumerable<Match> GetMatches()
@@ -49,11 +50,17 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
         {
             int len = chosenWord.Length;
             var toRemove = new List<Match>();
+            var _totalRecount = 0;
+            var _totalCollisions = 0;
+            var _totalRemoved = 0;
 
             for (int i = 0; i < locations.Length; i++)
             {
                 var locStart = locations[i]; // Start inclusive
                 var locEnd = locStart + len; // End exclusive
+
+                var recounts = 0;
+                var collisions = 0;
 
                 // We have to check in the forwards and backwards directions:
                 // First, the easier, forward:
@@ -67,7 +74,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
                     for (; node != null; node = node.Next[0])
                     {
                         var m = node.Value;
-                        if (m.WasRecounted) continue;
+                        if (m.WasRecounted) {collisions++; continue;}
                         var areIntersecting = m.Index <= saLoc;
 
                         if (!areIntersecting)
@@ -77,6 +84,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
                         }
                         else
                         {
+                            recounts++;
                             // Recount
                             m.Count = this.BWDIndex.Count(m);
                             m.WasRecounted = true;
@@ -103,7 +111,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
                     for (; node != null; node = node.Next[0])
                     {
                         var m = node.Value;
-                        if (m.WasRecounted) continue;
+                        if (m.WasRecounted) { collisions++; continue; }
                         var areIntersecting = m.Index <= saLoc;
 
                         if (!areIntersecting)
@@ -113,6 +121,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
                         }
                         else
                         {
+                            recounts++;
                             // Recount
                             m.Count = this.BWDIndex.Count(m);
                             m.WasRecounted = true;
@@ -128,12 +137,16 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
                         if (totalRecounted == 0) break;
                     }
                 }
+            
+                _totalCollisions += collisions;
+                _totalRecount += recounts;
+                _totalRemoved += toRemove.Count;
+            
+                Console.WriteLine($"Collisions: {_totalCollisions}, Recounts: {_totalRecount}, ToRemove: {_totalRemoved} so far");
+                foreach (var value in toRemove)
+                    this.Matches.Remove(value);
+                toRemove.Clear();
             }
-
-            foreach (var value in toRemove)
-                this.Matches.Remove(value);
-            // Console.WriteLine($"Removed {toRemove.Count}");
-            toRemove.Clear();
         }
 
         private IEnumerable<Match> GenerateMatches()

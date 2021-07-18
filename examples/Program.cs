@@ -17,7 +17,6 @@ using System.IO;
 using System.Linq;
 using BWDPerf.Transforms.Algorithms.EntropyCoders.RANSNibbled;
 using BWDPerf.Tools;
-using ConsoleTables;
 
 
 class Program
@@ -93,24 +92,5 @@ class Program
             .ToCoder(new BWD(new EntropyRanking(), new LCPTableMatchProvider()))
             .ToCoder(new BWDictionaryEncoder())
             .Serialize(new SerializeToFile("dict_"));
-    }
-
-    private static void Experiment()
-    {
-        Console.WriteLine("Started...");
-        var buffer = File.ReadAllBytes(_file);
-        var bwdIndex = new BWDIndex(buffer);
-
-        bwdIndex.SA.Print(buffer, 0, -1, -1);
-
-        Console.WriteLine(bwdIndex.SAinv[06]);
-        Console.WriteLine(bwdIndex.SAinv[05]);
-        Console.WriteLine(bwdIndex.SAinv[04]);
-        Console.WriteLine(bwdIndex.SAinv[03]);
-        Console.WriteLine(bwdIndex.SAinv[02]);
-        Console.WriteLine(bwdIndex.SAinv[01]);
-        Console.WriteLine(bwdIndex.SAinv[00]);
-
-        Environment.Exit(1);
     }
 }
