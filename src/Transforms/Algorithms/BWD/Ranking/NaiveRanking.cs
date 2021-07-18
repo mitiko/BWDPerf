@@ -5,7 +5,7 @@ using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 {
-    public class NaiveRanking : IBWDRanking
+    public class NaiveRanking : IBWDRankProvider
     {
         public int BPC { get; }
         private RankedWord BestWord { get; set; } = RankedWord.Empty;
@@ -26,8 +26,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 
         public void Rank(Match match)
         {
-            var count = this.BWDIndex.Count(match).Count;
-            if (count < 2 || match.Length == 1) return;
+            var count = this.BWDIndex.Count(match);
+            if (count < 2 || match.Length < 2) return;
             if (!this.LearnedRanks[match.Length].TryGetValue(count, out var rank))
             {
                 var calcRank = (match.Length - 1) * (count - 1);

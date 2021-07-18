@@ -3,7 +3,7 @@ using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Interfaces
 {
-    public interface IBWDRanking
+    public interface IBWDRankProvider
     {
         public BWDIndex BWDIndex { get; }
 

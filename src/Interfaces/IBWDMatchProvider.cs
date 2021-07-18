@@ -3,11 +3,12 @@ using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Interfaces
 {
-    public interface IBWDMatching
+    public interface IBWDMatchProvider
     {
         public BWDIndex BWDIndex { get; }
 
         public void Initialize(BWDIndex BWDIndex);
         public IEnumerable<Match> GetMatches();
+        public void RecountWord(Word chosenWord, int[] locations);
     }
 }

@@ -6,7 +6,7 @@ using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 {
-    public class Order1EntropyRanking : IBWDRanking
+    public class Order1EntropyRanking : IBWDRankProvider
     {
         private RankedWord BestWord { get; set; } = RankedWord.Empty;
         private Statistics Model { get; set; } = new();

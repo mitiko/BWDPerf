@@ -94,15 +94,20 @@ namespace BWDPerf.Tools
             this.SA = p[1..];
         }
 
-        public void Print(ReadOnlyMemory<byte> data, int wordLength = -1)
+        public void Print(ReadOnlyMemory<byte> data, int startIndex = 0, int endIndex = -1, int wordLength = -1)
         {
-            Console.WriteLine("Suffix array:");
-            foreach (var x in this.SA)
-                Console.WriteLine($"{x:00} -- {GetWord(x, wordLength)}");
+            Console.WriteLine("--- Suffix Array ---");
+            if (endIndex == -1) endIndex = this.SA.Length - 1;
+            for (int i = startIndex; i <= endIndex; i++)
+            {
+                int x = this.SA[i];
+                Console.WriteLine($"{i} -- {x} -- {GetWord(x, wordLength)}");
+            }
 
             string GetWord(int index, int len)
             {
                 if (len == -1) len = this.SA.Length - index;
+                if (index + len > this.SA.Length) len = this.SA.Length - index;
                 var word = data.Slice(index, len);
                 var str = "\"";
                 foreach (var sym in word.Span)

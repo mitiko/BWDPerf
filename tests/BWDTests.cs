@@ -29,7 +29,7 @@ namespace BWDPerf.Tests
         public async Task EntropyRankingLCPStaticMatchfinderTest() =>
             await RunBWDWithOptions(new EntropyRanking(), new LCPStaticMatching(), Guid.NewGuid());
 
-        private static async Task RunBWDWithOptions(IBWDRanking ranking, IBWDMatching matching, Guid guid)
+        private static async Task RunBWDWithOptions(IBWDRankProvider ranking, IBWDMatchProvider matching, Guid guid)
         {
             // Compute dictionary
             await new BufferedFileSource(_enwik4, 100_000)

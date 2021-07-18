@@ -16,6 +16,9 @@ using BWDPerf.Transforms.Tools;
 using System.IO;
 using System.Linq;
 using BWDPerf.Transforms.Algorithms.EntropyCoders.RANSNibbled;
+using BWDPerf.Tools;
+using ConsoleTables;
+
 
 class Program
 {
@@ -27,8 +30,10 @@ class Program
 
         // Compresion
         Console.WriteLine("Compressing...");
-        await Compress();
+        await ComputeDict();
         Console.WriteLine($"Compression took: {timer.Elapsed}"); timer.Restart();
+        Environment.Exit(1);
+        await Compress();
 
         // Output stats
         var fileName = _file.Split('/').Last();
@@ -79,5 +84,13 @@ class Program
             .ToDecoder(new RANSNibbledDecoder<byte>(alphabet, quantizer))
             // .ToDecoder(new RANSDecoder<byte>(alphabet, quantizer))
             .Serialize(new SerializeToFile("decoded"));
+    }
+
+    private static async Task ComputeDict()
+    {
+        await new BufferedFileSource(_file, 768771)
+            .ToCoder(new BWD(new EntropyRanking(), new LCPTableMatchProvider()))
+            .ToCoder(new BWDictionaryEncoder())
+            .Serialize(new SerializeToFile("dict_"));
     }
 }
