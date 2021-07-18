@@ -11,10 +11,10 @@ namespace BWDPerf.Tools
     // TODO: Compare performance with doubly linked skip list
     public class SkipList<T> where T : IComparable<T>
     {
-        private readonly SkipListNode<T> _start = new(default, _maxLevel);
         private static readonly int _maxLevel = 33;
         private readonly Random _rnd = new(Seed: 1337);
 
+        public readonly SkipListNode<T> _start = new(default, _maxLevel);
         public int Count { get; private set; } = 0;
 
         public SkipList()

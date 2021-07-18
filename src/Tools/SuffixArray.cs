@@ -101,7 +101,7 @@ namespace BWDPerf.Tools
             for (int i = startIndex; i <= endIndex; i++)
             {
                 int x = this.SA[i];
-                Console.WriteLine($"{i} -- {x} -- {GetWord(x, wordLength)}");
+                Console.WriteLine($"{i:00} -- {x:00} -- {GetWord(x, wordLength)}");
             }
 
             string GetWord(int index, int len)

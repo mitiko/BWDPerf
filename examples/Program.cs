@@ -22,8 +22,9 @@ using ConsoleTables;
 
 class Program
 {
-    static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\calgary\book1";
-    // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\book11";
+    // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\file.md";
+    // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\calgary\book1";
+    static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\book11";
     static async Task Main()
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -92,5 +93,24 @@ class Program
             .ToCoder(new BWD(new EntropyRanking(), new LCPTableMatchProvider()))
             .ToCoder(new BWDictionaryEncoder())
             .Serialize(new SerializeToFile("dict_"));
+    }
+
+    private static void Experiment()
+    {
+        Console.WriteLine("Started...");
+        var buffer = File.ReadAllBytes(_file);
+        var bwdIndex = new BWDIndex(buffer);
+
+        bwdIndex.SA.Print(buffer, 0, -1, -1);
+
+        Console.WriteLine(bwdIndex.SAinv[06]);
+        Console.WriteLine(bwdIndex.SAinv[05]);
+        Console.WriteLine(bwdIndex.SAinv[04]);
+        Console.WriteLine(bwdIndex.SAinv[03]);
+        Console.WriteLine(bwdIndex.SAinv[02]);
+        Console.WriteLine(bwdIndex.SAinv[01]);
+        Console.WriteLine(bwdIndex.SAinv[00]);
+
+        Environment.Exit(1);
     }
 }

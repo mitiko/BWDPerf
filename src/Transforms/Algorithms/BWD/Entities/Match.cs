@@ -12,6 +12,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
         public int Count { get; set; }
         // Length of word
         public int Length { get; }
+        // If it was recounted already
+        public bool WasRecounted { get; set; }
 
         public Match(int index, int saCount, int count, int length)
         {
@@ -21,6 +23,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
             this.SACount = saCount;
             this.Count = count;
             this.Length = length;
+            this.WasRecounted = false;
         }
 
         public int CompareTo(Match other)
@@ -29,8 +32,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
             // This way we can detect when the predicate of being inside a range is over
             
             // As an optimization we don't compute -1 on the end index
-            var thisEnd = this.Index + this.Length;
-            var otherEnd = other.Index + other.Length;
+            var thisEnd = this.Index + this.SACount;
+            var otherEnd = other.Index + other.SACount;
             if (thisEnd > otherEnd) return 1;
             else if (thisEnd < otherEnd) return -1;
             else

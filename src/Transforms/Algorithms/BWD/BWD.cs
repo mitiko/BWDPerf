@@ -54,6 +54,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 // TODO: Merge those?
                 this.BWDIndex.MarkWordAsUnavailable(word, out var locations);
                 Console.WriteLine($"Real count: {locations.Length}");
+                if (i == 1) Environment.Exit(1);
                 this.MatchProvider.RecountWord(word, locations);
             }
 

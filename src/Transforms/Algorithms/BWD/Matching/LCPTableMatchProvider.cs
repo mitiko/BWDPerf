@@ -22,15 +22,31 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
             Console.WriteLine($"Skip list took: {timer.Elapsed}");
         }
 
-        public IEnumerable<Match> GetMatches() => this.Matches.Enumerate();
+        public IEnumerable<Match> GetMatches()
+        {
+            for (var node = this.Matches._start.Next[0]; node != null; node = node.Next[0])
+            {
+                var m = node.Value;
+                m.WasRecounted = false;
+                node.Value = m;
+                yield return m;
+            }
+        }
 
+        // If the end exceeds the start index of the location we (might) have an intersection
+        // Since the skip list is ordered by end index in ascending order
+        // the binary search guarantees us that all following nodes have their
+        // match's end index exceeding the location's start index
+        // The only case when there's no intersection is when the start index of
+        // the match exceeds the end index of the location.
+        // Due to the nature of ranges, we cannot sort the matches in such a way
+        // that the second condition is also continuous on the skip list
+        // (if it were, we could perform a second binary search and find all intersections fast)
+        // But with a second ordering by the start index in descending order
+        // we can be certain there's no more nodes with intersecting matches after
+        // two consecutive secondary condition failures
         public void RecountWord(Word chosenWord, int[] locations)
         {
-            // TODO: Find all locations
-            // FOR NOW!!! : Fixed by passing the reference to the same locations array
-            // var word = this.BWDIndex.Buffer.Slice(chosenWord.Location, chosenWord.Length);
-            // var rawSortedLocations = this.BWDIndex.SA.Search(this.BWDIndex.Buffer, word);
-            // var locations = this.BWDIndex.Parse(rawSortedLocations, word.Length);
             int len = chosenWord.Length;
             var toRemove = new List<Match>();
 
@@ -38,54 +54,85 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
             {
                 var locStart = locations[i]; // Start inclusive
                 var locEnd = locStart + len; // End exclusive
-                // If the end exceeds the start index of the location we (might) have an intersection
-                Predicate<Match> predicate = m => m.Index + m.Length > locStart;
-                bool maybeBreak = false;
-                // System.Console.WriteLine($"loc range: [{locStart}, {locEnd})");
 
-                // Since the skip list is ordered by end index in ascending order
-                // the binary search guarantees us that all following nodes have their
-                // match's end index exceeding the location's start index
-                // The only case when there's no intersection is when the start index of
-                // the match exceeds the end index of the location.
-                // Due to the nature of ranges, we cannot sort the matches in such a way
-                // that the second condition is also continuous on the skip list
-                // (if it were, we could perform a second binary search and find all intersections fast)
-                // But with a second ordering by the start index in descending order
-                // we can be certain there's no more nodes with intersecting matches after
-                // two consecutive secondary condition failures
-                for (
-                    var node = this.Matches.BinarySearchFirstInRange(predicate);
-                    node != null;
-                    node = node.Next[0])
+                // We have to check in the forwards and backwards directions:
+                // First, the easier, forward:
+                for (int loc = locStart; loc < locEnd; loc++)
                 {
-                    var m = node.Value;
-                    var areIntersecting = m.Index < locEnd;
+                    var saLoc = this.BWDIndex.SAinv[loc];
+                    bool maybeBreak = false;
+                    int previousStart = -1;
 
+                    var node = this.Matches.BinarySearchFirstInRange(m => m.Index + m.SACount > saLoc);
+                    for (; node != null; node = node.Next[0])
+                    {
+                        var m = node.Value;
+                        if (m.WasRecounted) continue;
+                        var areIntersecting = m.Index <= saLoc;
 
-                    if (!areIntersecting)
-                    {
-                        if (maybeBreak) break;
-                        else maybeBreak = true;
-                    }
-                    else
-                    {
-                        // Recount
-                        m.Count = this.BWDIndex.Count(m);
-                        if (m.Count < 2 || m.Length < 2)
-                            toRemove.Add(node.Value);
+                        if (!areIntersecting)
+                        {
+                            if (maybeBreak && m.Index > previousStart) break;
+                            else maybeBreak = true;
+                        }
                         else
-                            node.Value = m;
-                        maybeBreak = false;
+                        {
+                            // Recount
+                            m.Count = this.BWDIndex.Count(m);
+                            m.WasRecounted = true;
+                            if (m.Count < 2 || m.Length < 2)
+                                toRemove.Add(node.Value);
+                            else
+                                node.Value = m;
+                            maybeBreak = false;
+                        }
+
+                        previousStart = m.Index;
                     }
-                    // var mb = maybeBreak ? 1 : 0;
-                    // System.Console.WriteLine($"[{m.Index:000000}, {m.Index + m.Length:000000}) {areIntersecting}, {mb}");
                 }
-                // Environment.Exit(1);
+
+                for (int loc = locStart - 1; loc >= 0 ; loc--)
+                {
+                    var saLoc = this.BWDIndex.SAinv[loc];
+                    bool maybeBreak = false;
+                    int previousStart = -1;
+                    int totalRecounted = 0;
+
+                    var node = this.Matches.BinarySearchFirstInRange(m => m.Index + m.SACount > saLoc);
+                    if (node == null) break;
+                    for (; node != null; node = node.Next[0])
+                    {
+                        var m = node.Value;
+                        if (m.WasRecounted) continue;
+                        var areIntersecting = m.Index <= saLoc;
+
+                        if (!areIntersecting)
+                        {
+                            if (maybeBreak && m.Index > previousStart) break;
+                            else maybeBreak = true;
+                        }
+                        else
+                        {
+                            // Recount
+                            m.Count = this.BWDIndex.Count(m);
+                            m.WasRecounted = true;
+                            if (m.Count < 2 || m.Length < 2)
+                                toRemove.Add(node.Value);
+                            else
+                                node.Value = m;
+                            maybeBreak = false;
+                            totalRecounted++;
+                        }
+
+                        previousStart = m.Index;
+                        if (totalRecounted == 0) break;
+                    }
+                }
             }
+
             foreach (var value in toRemove)
                 this.Matches.Remove(value);
-            Console.WriteLine($"Removed {toRemove.Count}");
+            // Console.WriteLine($"Removed {toRemove.Count}");
             toRemove.Clear();
         }
 
@@ -106,7 +153,6 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
                 {
                     var m = matches.Pop();
                     m.SACount = i - m.Index + 1;
-                    m.Index = this.BWDIndex.SA[m.Index];
                     m.Count = this.BWDIndex.Count(m);
                     yield return m;
                 }

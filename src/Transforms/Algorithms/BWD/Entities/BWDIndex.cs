@@ -34,8 +34,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
 
         public int Count(Match match)
         {
-            var index = this.SAinv[match.Index];
-            var locations = this.SA[index..(index + match.SACount)];
+            var locations = this.SA[match.Index..(match.Index + match.SACount)];
             Array.Sort(locations);
             var count = 0;
             var lastMatch = - match.Length;
@@ -59,8 +58,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
 
         public int[] Parse(Match match)
         {
-            var index = this.SAinv[match.Index];
-            var locations = this.SA[index..(index + match.Count)];
+            var locations = this.SA[match.Index..(match.Index + match.Count)];
             Array.Sort(locations);
             return this.Parse(locations, match.Length);
         }
