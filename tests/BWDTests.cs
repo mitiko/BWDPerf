@@ -26,8 +26,12 @@ namespace BWDPerf.Tests
             await RunBWDWithOptions(new EntropyRanking(), new LCPMatchFinder(), Guid.NewGuid());
 
         [TestMethod]
+        public async Task NaiveRankingLCPMatchfinderTest() =>
+            await RunBWDWithOptions(new NaiveRanking(maxWordSize: 150), new LCPMatchFinder(), Guid.NewGuid());
+
+        [TestMethod]
         public async Task EntropyRankingLCPStaticMatchfinderTest() =>
-            await RunBWDWithOptions(new EntropyRanking(), new LCPStaticMatching(), Guid.NewGuid());
+            await RunBWDWithOptions(new EntropyRanking(), new LCPStaticMatchFinder(), Guid.NewGuid());
 
         private static async Task RunBWDWithOptions(IBWDRankProvider ranking, IBWDMatchProvider matching, Guid guid)
         {
