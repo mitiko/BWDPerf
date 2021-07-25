@@ -1,9 +1,9 @@
 namespace BWDPerf.Interfaces
 {
-    public interface IAlphabet<TSymbol>
+    public interface IAlphabet<PredictionSymbol>
     {
-        public TSymbol this[int index] { get; }
-        public int this[TSymbol symbol] { get; }
+        public PredictionSymbol this[int index] { get; }
+        public int this[PredictionSymbol symbol] { get; }
         public int Length { get; }
     }
 }

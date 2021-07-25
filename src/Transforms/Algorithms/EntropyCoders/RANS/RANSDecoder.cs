@@ -1,59 +1,72 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using BWDPerf.Interfaces;
 using BWDPerf.Tools;
+using BWDPerf.Transforms.Algorithms.EntropyCoders.RANS.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.EntropyCoders.RANS
 {
-    public class RANSDecoder<TSymbol> : IDecoder<byte, TSymbol>
+    public class RANSDecoder<PredictionSymbol, OutputSymbol> : IDecoder<byte, OutputSymbol>
     {
-        public IAlphabet<TSymbol> Alphabet { get; }
-        public IQuantizer Model { get; }
+        public IAlphabet<PredictionSymbol> Alphabet { get; }
+        public IModel Model { get; }
+        public IQuantizer Quantizer { get; }
+        public IConverter<PredictionSymbol, OutputSymbol> Converter { get; set; }
 
-        // See encoder for explanation of these constants
-        public const uint _L = 1u << 23;
-        public const int _logB = 8;
-
-        public RANSDecoder(IAlphabet<TSymbol> alphabet, IQuantizer model)
+        public RANSDecoder(
+            IAlphabet<PredictionSymbol> alphabet,
+            IModel model,
+            IQuantizer quantizer,
+            IConverter<PredictionSymbol, OutputSymbol> converter)
         {
             this.Alphabet = alphabet;
             this.Model = model;
+            this.Quantizer = quantizer;
+            this.Converter = converter;
         }
 
-        public async IAsyncEnumerable<TSymbol> Decode(IAsyncEnumerable<byte> input)
+        public async IAsyncEnumerable<OutputSymbol> Decode(IAsyncEnumerable<byte> input)
         {
             var enumerator = input.GetAsyncEnumerator();
             var byteQueue = new Queue<byte>(capacity: 8);
+            int logM = this.Quantizer.Accuracy;
+            uint mask = (uint) (1 << logM) - 1;
             uint state = await ByteStreamHelper.GetUInt32Async(enumerator);
-            int n = this.Model.Accuracy;
-            uint mask = (uint) (1 << n) - 1;
 
             while (true)
             {
-                Debug.Assert(_L <= state, "State was under bound [L, bL)");
-                Debug.Assert(state < (_L << _logB), "State was over bound [L, bl)");
+                Debug.Assert(RANS._L <= state, "State was under bound [L, bL)");
+                Debug.Assert(state < (RANS._L << RANS._logB), "State was over bound [L, bl)");
 
-                // Decode
-                uint cdf = state & mask;
-                var prediction = this.Model.Predict();
-                var symbol = this.Model.Decode(cdf, prediction);
-                yield return this.Alphabet[symbol];
+                // Predict and decode symbol
+                var prediction = this.Model.Predict(); prediction.Normalize();
+                var cdfRange = state & mask;
+                var (symbolIndex, cdf, freq) = this.Quantizer.Decode(cdfRange, prediction);
 
-                // Update model, update state
-                var (eCDF, eFreq) = this.Model.Encode(symbol, prediction);
-                state = eFreq * (state >> n) + (state & mask) - eCDF;
-                this.Model.Update(symbol);
+                // Update state and update model
+                RANS.Decode(ref state, new RANSSymbol(cdf, freq), logM, mask);
+                this.Model.Update(symbolIndex);
 
-                // Check if EOF and read bytes from the stream to write into the queue
+                // Write symbol to the (output) stream
+                var predictionSymbol = this.Alphabet[symbolIndex];
+                this.Converter.Buffer(predictionSymbol);
+                foreach (var outputSymbol in this.Converter.Convert())
+                    yield return outputSymbol;
+
+                // Check if EOF and read bytes from the (input) stream to write into the queue
                 while (byteQueue.Count <= 8 && await enumerator.MoveNextAsync())
                     byteQueue.Enqueue(enumerator.Current);
-                if (byteQueue.Count == 0 && state <= _L)
-                    break;
 
-                // Read bytes into the state (renormalization)
-                while (state < _L)
-                    state = (state << _logB) | byteQueue.Dequeue();
+                // Renormalize and stop decoding if there's nothing more to decode (the byte queue is empty and the state is L)
+                if (RANS.RenormalizeDecode(ref state, byteQueue)) break;
             }
+
+            // If there's prediction symbols left in the converter's buffer, the conversion was incomplete
+            // Warn the user about it
+            if (this.Converter.Flush())
+                Console.WriteLine("[RANSDecoder] Warning: the conversion was incomplete");
+            // TODO: Use yellow when we add a logging system
         }
     }
 }

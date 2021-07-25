@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using BWDPerf.Architecture;
 using BWDPerf.Transforms.Algorithms.BWD;
 using BWDPerf.Transforms.Algorithms.BWD.Matching;
-using BWDPerf.Transforms.Algorithms.BWD.Entities;
 using BWDPerf.Transforms.Algorithms.BWD.Ranking;
 using BWDPerf.Transforms.Algorithms.EntropyCoders.RANS;
 using BWDPerf.Transforms.Modeling.Alphabets;
@@ -15,25 +14,21 @@ using BWDPerf.Transforms.Sources;
 using BWDPerf.Transforms.Tools;
 using System.IO;
 using System.Linq;
-using BWDPerf.Transforms.Algorithms.EntropyCoders.RANSNibbled;
-using BWDPerf.Tools;
-
+using BWDPerf.Transforms.Converters;
 
 class Program
 {
-    // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\file.md";
-    static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\calgary\book1";
-    // static readonly string _file = @"C:\Users\HP\Documents\BWDPerf\data\book11";
+    static readonly string _file = @"/home/mitiko/Documents/Projects/Compression/BWDPerf/data/calgary/book1";
+    // static readonly string _file = @"/home/mitiko/Documents/Projects/Compression/BWDPerf/data/book11";
     static async Task Main()
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
 
         // Compresion
         Console.WriteLine("Compressing...");
-        await ComputeDict();
-        Console.WriteLine($"Compression took: {timer.Elapsed}"); timer.Restart();
-        Environment.Exit(1);
+        await ComputeDict(loadDictionary: true);
         await Compress();
+        Console.WriteLine($"Compression took: {timer.Elapsed}"); timer.Restart();
 
         // Output stats
         var fileName = _file.Split('/').Last();
@@ -58,13 +53,21 @@ class Program
         var alphabet = new NibbleAlphabet();
         // var order0 = new Order0(alphabet.Length);
         // var order1 = new Order1(alphabet.Length);
-        var order3 = new ByteOrder3(alphabet.Length);
-        var quantizer = new BasicQuantizer(order3);
+        var order2 = new ByteOrder2(alphabet.Length);
+        var model = order2;
+        var quantizer = new BasicQuantizer();
+        var converter = new NibbleBlockConverter();
+
+        // Load dictionary
+        var dict = await new FileSource("dict_book1")
+            .ToDecoder(new BWDictionaryDecoder())
+            .First();
 
         // Compress
         await new BufferedFileSource(_file, 1_000_000)
-            .ToCoder<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>(new MeasureEntropy())
-            .ToCoder(new RANSNibbledEncoder<byte>(alphabet, quantizer))
+            .ToCoder(new BWDParser(dict))
+            .ToCoder<ReadOnlyMemory<ushort>, ReadOnlyMemory<ushort>>(new MeasureEntropy())
+            .ToCoder(new RANSEncoder<ushort, byte>(alphabet, model, quantizer, converter))
             // .ToCoder(new RANSEncoder<byte>(alphabet, quantizer))
             .Serialize(new SerializeToFile("encoded.nb"));
     }
@@ -74,23 +77,30 @@ class Program
         // Create the model
         // var alphabet = new TextAlphabet();
         var alphabet = new NibbleAlphabet();
-        // var order0 = new Order0(alphabet.Length);
         // var order1 = new Order1(alphabet.Length);
-        var order3 = new ByteOrder3(alphabet.Length);
-        var quantizer = new BasicQuantizer(order3);
+        var order2 = new ByteOrder2(alphabet.Length);
+        var model = order2;
+        var quantizer = new BasicQuantizer();
+        var converter = new NibbleConverter();
+
+        // Load dictionary
+        var dict = await new FileSource("dict_book1")
+            .ToDecoder(new BWDictionaryDecoder())
+            .First();
 
         // Decompress
         await new FileSource("encoded.nb")
-            .ToDecoder(new RANSNibbledDecoder<byte>(alphabet, quantizer))
-            // .ToDecoder(new RANSDecoder<byte>(alphabet, quantizer))
+            .ToDecoder(new RANSDecoder<byte, ushort>(alphabet, model, quantizer, converter))
+            .ToDecoder(new BWDDecoder(dict))
             .Serialize(new SerializeToFile("decoded"));
     }
 
-    private static async Task ComputeDict()
+    private static async Task ComputeDict(bool loadDictionary)
     {
-        await new BufferedFileSource(_file, 768771)
-            .ToCoder(new BWD(new EntropyRanking(), new LCPMatchFinder()))
+        if (loadDictionary) return;
+        await new BufferedFileSource(_file, 1_000_000)
+            .ToCoder(new BWD(new EntropyRanking(), new LCPStaticMatchFinder()))
             .ToCoder(new BWDictionaryEncoder())
-            .Serialize(new SerializeToFile("dict_"));
+            .Serialize(new SerializeToFile("dict_book1"));
     }
 }

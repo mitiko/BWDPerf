@@ -2,23 +2,17 @@ using BWDPerf.Transforms.Modeling;
 
 namespace BWDPerf.Interfaces
 {
+    // Converts probabilities to the closest x/2^n for an integer x
+    // The idea is to have the denominator be a power of 2
     public interface IQuantizer
     {
-        // For example a 12-bit quantizer has accuracy 12
-        // And quantizes the probabilities to the closest n/2^12 for an integer n
-        // The idea is to have the sum be 2^12
+        // The bit accuracy of a quantizer
         public int Accuracy { get; }
 
-        // Return the prediction of the model
-        public Prediction Predict();
-
-        // Get cumulative distribution frequency and frequency
+        // Quantize a prediction to a n-bit frequency and a cumulative distribution frequency
         public (uint cdf, uint freq) Encode(int symbolIndex, Prediction prediction);
 
-        // Get symbol based on cdf range it falls in
-        public int Decode(uint cdf, Prediction prediction);
-
-        // Update the underlying model by passing what the symbol was
-        public void Update(int symbolIndex);
+        // Get symbol (as symbolIndex, cdf and freq) based on cdf range it falls in
+        public (int symbolIndex, uint cdf, uint freq) Decode(uint cdfRange, Prediction prediction);
     }
 }
