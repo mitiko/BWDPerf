@@ -20,11 +20,11 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Matching
 
             foreach (var match in GenerateMatches())
                 this.MatchList.Insert(match);
-            
+
             Console.WriteLine($"Initializing the skip list took: {timer.Elapsed}");
             Console.WriteLine($"Skip list len: {this.MatchList.Count}");
         }
-        
+
         public IEnumerable<Match> GetMatches() => this.MatchList.Enumerate();
 
         public void RemoveIfPossible(Match match) => this.MatchList.Remove(match);

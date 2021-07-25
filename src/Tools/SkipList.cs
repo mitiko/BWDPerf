@@ -1,7 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Tools
 {
@@ -69,8 +67,8 @@ namespace BWDPerf.Tools
 
                     // If we find the element, remove it from the list at the current level
                     // The curr node stays the same, so we should "find" the element again
-                    // for the other levels. Furthermore, the branch predictor should pick up 
-                    // this pattern pretty easily. 
+                    // for the other levels. Furthermore, the branch predictor should pick up
+                    // this pattern pretty easily.
                     if (comparison == 0)
                     {
                         found = true;
@@ -89,12 +87,9 @@ namespace BWDPerf.Tools
         // the following pattern along the sorted data range:
         // FFFFFFFFFFFFFFFFFFFFFFFFFTTTTTTTTTTTT
         // Patterns such as FFFFFFFTTTTTFFFFF will not return the (humanly) expected result
-        public SkipListNode<T> BinarySearchFirstInRange(Predicate<T> predicate) => this.BinarySearchFirstInRange(predicate, _start);
-
-        // This start node overload is for optimization purposes, since the parsed location list is already sorted
-        public SkipListNode<T> BinarySearchFirstInRange(Predicate<T> predicate, SkipListNode<T> startNode)
+        public SkipListNode<T> BinarySearchFirstInRange(Predicate<T> predicate)
         {
-            var curr = startNode;
+            var curr = _start;
 
             // Skip as many nodes as possible in the higher levels until
             // we find the region our node falls into.
@@ -117,12 +112,6 @@ namespace BWDPerf.Tools
                 yield return node.Value;
         }
 
-        public IEnumerable<SkipListNode<T>> EnumerateNodes()
-        {
-            for (var node = _start.Next[0]; node != null; node = node.Next[0])
-                yield return node;
-        }
-
         public class SkipListNode<J>
         {
             public J Value { get; set; }
@@ -136,5 +125,5 @@ namespace BWDPerf.Tools
                 this.Next = new SkipListNode<J>[level];
             }
         }
-    }    
+    }
 }

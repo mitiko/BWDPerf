@@ -24,7 +24,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
         {
             // Sort matches in ascending order of end index and descending order of start index
             // This way we can detect when the predicate of being inside a range is over
-            
+
             // As an optimization we don't compute -1 on the end index
             var thisEnd = this.Index + this.SACount;
             var otherEnd = other.Index + other.SACount;
