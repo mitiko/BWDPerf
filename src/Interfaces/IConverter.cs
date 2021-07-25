@@ -1,9 +1,11 @@
+using System.Collections.Generic;
+
 namespace BWDPerf.Interfaces
 {
-    public interface IConverter<TSymbol>
+    public interface IConverter<PredictionSymbol, OutputSymbol>
     {
-        public int BytesPerSymbol { get; set; }
-        public byte[] Convert(TSymbol symbol);
-        public TSymbol Convert(byte[] bytes);
+        public void Buffer(PredictionSymbol predictionSymbol);
+        public IEnumerable<OutputSymbol> Convert();
+        public bool Flush();
     }
 }

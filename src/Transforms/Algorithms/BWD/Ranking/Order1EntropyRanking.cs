@@ -6,12 +6,12 @@ using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 {
-    public class Order1EntropyRanking : IBWDRanking
+    public class Order1EntropyRanking : IBWDRankProvider
     {
         private RankedWord BestWord { get; set; } = RankedWord.Empty;
-        private readonly RankedWord InitialWord = RankedWord.Empty;
         private Statistics Model { get; set; } = new();
         private Statistics BestWordModel { get; set; } = new();
+        private IBWDMatchProvider MatchProvider { get; set; }
         public BWDIndex BWDIndex { get; private set; }
 
         // State
@@ -22,11 +22,12 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         private double Ew = 0; // encoded size with the change in dictionary (in bits)
         private double d = 0; // dictionary update in bits
 
-        public void Initialize(BWDIndex BWDIndex)
+        public void Initialize(BWDIndex BWDIndex, IBWDMatchProvider matchProvider)
         {
             // TODO: Start with a bias for initial dictionary overhead
             // Initialize model
             this.BWDIndex = BWDIndex;
+            this.MatchProvider = matchProvider;
             int n = this.BWDIndex.Length;
             for (int i = 0; i < n; i++)
                 this.Model.Order0.Add(this.BWDIndex[i]);
@@ -42,9 +43,11 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 
         public void Rank(Match match)
         {
-            if (match.Length < 2) return; // Rank of single characters is 0
+            // Rank of single characters is 0
+            if (match.Length < 2) { this.MatchProvider.RemoveIfPossible(match); return; }
             var locs = this.BWDIndex.Parse(match); // Get matching locations
-            if (locs.Length < 2) return; // Must locate match at at least 2 locations to get gains
+            // Must locate match at at least 2 locations to get gains
+            if (locs.Length < 2) { this.MatchProvider.RemoveIfPossible(match); return; }
             var loc = locs[0];
 
             // Copy the model
@@ -66,7 +69,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
             }
             // 3) Update when the words is a context
             model.Order1.Add(this.WordIndex, new OccurenceDictionary<ushort>());
-            for (int i = locs.Length - ((locs[locs.Length-1] == this.BWDIndex.Length - match.Length) ? 2 : 1); i >= 0 ; i--)
+            for (int i = locs.Length - ((locs[^1] == this.BWDIndex.Length - match.Length) ? 2 : 1); i >= 0 ; i--)
             {
                 model.Order1[this.WordIndex].Add(this.BWDIndex[locs[i]+match.Length]);
                 model.Order1[this.BWDIndex[loc+match.Length-1]].Substract(this.BWDIndex[locs[i]+match.Length]);

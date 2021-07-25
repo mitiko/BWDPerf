@@ -27,6 +27,15 @@ namespace BWDPerf.Transforms.Modeling
                 this.Probabilities[i] /= sum;
         }
 
+        public void Print()
+        {
+            for (int i = 0; i < this.Length; i++)
+            {
+                Console.Write($"{this[i]}, ");
+            }
+            Console.WriteLine($". len = {this.Length}");
+        }
+
         public double Sum()
         {
             double sum = 0;

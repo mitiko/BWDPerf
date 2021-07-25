@@ -32,7 +32,7 @@ namespace BWDPerf.Tools
                 for (int i = 0; i < this.Array.Length - (lastIsPartial ? 1 : 0); i++)
                     this.Array[i] = uint.MaxValue;
                 if (lastIsPartial)
-                    this.Array[this.Array.Length - 1] = (1u << (length & 31)) - 1;
+                    this.Array[^1] = (1u << (length & 31)) - 1;
             }
         }
 

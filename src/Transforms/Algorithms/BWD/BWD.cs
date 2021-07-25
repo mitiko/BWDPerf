@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BWDPerf.Interfaces;
 using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
@@ -7,14 +8,14 @@ namespace BWDPerf.Transforms.Algorithms.BWD
 {
     public class BWD : ICoder<ReadOnlyMemory<byte>, BWDictionary>
     {
-        private IBWDRanking Ranking { get; }
-        private IBWDMatching MatchFinder { get; }
+        private IBWDRankProvider RankProvider { get; }
+        private IBWDMatchProvider MatchProvider { get; }
         private BWDIndex BWDIndex { get; set; }
 
-        public BWD(IBWDRanking ranking, IBWDMatching matchFinder)
+        public BWD(IBWDRankProvider rankProvider, IBWDMatchProvider matchProvider)
         {
-            this.Ranking = ranking;
-            this.MatchFinder = matchFinder;
+            this.RankProvider = rankProvider;
+            this.MatchProvider = matchProvider;
         }
 
         public async IAsyncEnumerable<BWDictionary> Encode(IAsyncEnumerable<ReadOnlyMemory<byte>> input)
@@ -28,8 +29,8 @@ namespace BWDPerf.Transforms.Algorithms.BWD
             // Initialize the index
             this.BWDIndex = new BWDIndex(buffer);
             // Initialize the match finder and ranking
-            this.MatchFinder.Initialize(this.BWDIndex);
-            this.Ranking.Initialize(this.BWDIndex);
+            this.MatchProvider.Initialize(this.BWDIndex);
+            this.RankProvider.Initialize(this.BWDIndex, this.MatchProvider);
 
             var timer = System.Diagnostics.Stopwatch.StartNew();
 
@@ -41,18 +42,20 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                 // This implies max dict size is 65278 words.
                 // Note no backwards compatibility is ensured yet
                 if (i == ushort.MaxValue - 256) break; // We're actually wasting some space on fully-covered characters?
-                foreach (var match in this.MatchFinder.GetMatches())
-                    this.Ranking.Rank(match);
+                foreach (var match in this.MatchProvider.GetMatches())
+                    this.RankProvider.Rank(match);
 
-                var rankedWord = this.Ranking.GetTopRankedWords()[0];
+                var rankedWord = this.RankProvider.GetTopRankedWords()[0];
                 var word = rankedWord.Word;
                 if (word.Equals(Word.Empty))
                     break;
                 dictionary[i] = buffer.Slice(word.Location, word.Length).ToArray();
                 PrintWord(rankedWord);
 
-                this.BWDIndex.MarkWordAsUnavailable(word);
+                this.BWDIndex.MarkWordAsUnavailable(word, out _);
             }
+
+            Console.WriteLine($"Skip list count after: {this.MatchProvider.GetMatches().Count()}");
 
             var elapsedTime = timer.Elapsed;
             Console.WriteLine($"Dict size is {dictionary.Count}");
@@ -69,7 +72,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD
                     if (this.BWDIndex.BitVector[j])
                     {
                         symbol = new Word(j, 1);
-                        this.BWDIndex.MarkWordAsUnavailable(symbol);
+                        this.BWDIndex.MarkWordAsUnavailable(symbol, out _);
                         break;
                     }
                 }

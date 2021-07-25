@@ -9,6 +9,8 @@ using BWDPerf.Transforms.Modeling.Quantizers;
 using BWDPerf.Transforms.Serializers;
 using BWDPerf.Transforms.Sources;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using BWDPerf.Transforms.Converters;
+using System;
 
 namespace BWDPerf.Tests
 {
@@ -20,36 +22,51 @@ namespace BWDPerf.Tests
         private const string _decompressedFile = "../../../decompressed";
 
         [TestMethod]
-        public async Task TestCompression()
+        public async Task RANSBytewiseTest()
         {
+            var guid = Guid.NewGuid();
             var alphabet = new TextAlphabet();
             var model = new Order0(alphabet.Length);
-            var quantizer = new BasicQuantizer(model);
-            var compressTask = new BufferedFileSource(_file, 10_000_000) // 10MB
-                .ToCoder(new RANSEncoder<byte>(alphabet, quantizer))
-                .Serialize(new SerializeToFile(_compressedFile));
 
-            await compressTask;
+            // Compress
+            await new BufferedFileSource(_file, 10_000_000) // 10MB
+                .ToCoder(new RANSEncoder<byte, byte>(alphabet, model, new BasicQuantizer(), new IdentityBlockConverter()))
+                .Serialize(new SerializeToFile(_compressedFile + guid));
+
+            // Decompress
+            model = new Order0(alphabet.Length);
+            await new FileSource(_compressedFile + guid)
+                .ToDecoder(new RANSDecoder<byte, byte>(alphabet, model, new BasicQuantizer(), new IdentityConverter()))
+                .Serialize(new SerializeToFile(_decompressedFile + guid));
+
+            TestIntegrity(_decompressedFile + guid, _file);
         }
 
         [TestMethod]
-        public async Task TestDecompression()
+        public async Task RANSNibblewiseTest()
         {
-            var alphabet = new TextAlphabet();
-            var model = new Order0(alphabet.Length);
-            var quantizer = new BasicQuantizer(model);
-            var decompressTask = new FileSource(_compressedFile)
-                .ToDecoder(new RANSDecoder<byte>(alphabet, quantizer))
-                .Serialize(new SerializeToFile(_decompressedFile));
+            var guid = Guid.NewGuid();
+            var alphabet = new NibbleAlphabet();
+            var model = new ByteOrder2(alphabet.Length);
 
-            await decompressTask;
+            // Compress
+            await new BufferedFileSource(_file, 10_000_000) // 10MB
+                .ToCoder(new RANSEncoder<byte, byte>(alphabet, model, new BasicQuantizer(), new NibbleBlockConverter()))
+                .Serialize(new SerializeToFile(_compressedFile + guid));
+
+            // Decompress
+            model = new ByteOrder2(alphabet.Length);
+            await new FileSource(_compressedFile + guid)
+                .ToDecoder(new RANSDecoder<byte, byte>(alphabet, model, new BasicQuantizer(), new NibbleConverter()))
+                .Serialize(new SerializeToFile(_decompressedFile + guid));
+
+            TestIntegrity(_decompressedFile + guid, _file);
         }
 
-        [TestMethod]
-        public void TestIntegrity() =>
+        private void TestIntegrity(string file1, string file2) =>
             Assert.IsTrue(
-                File.ReadAllBytes(_file)
-                    .SequenceEqual(File.ReadAllBytes(_decompressedFile))
+                File.ReadAllBytes(file1)
+                    .SequenceEqual(File.ReadAllBytes(file2))
             );
     }
 }

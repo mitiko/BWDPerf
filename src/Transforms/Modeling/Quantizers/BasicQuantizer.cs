@@ -6,16 +6,6 @@ namespace BWDPerf.Transforms.Modeling.Quantizers
     public class BasicQuantizer : IQuantizer
     {
         public int Accuracy => 23;
-        public IModel Model { get; }
-
-        public BasicQuantizer(IModel model) => this.Model = model;
-
-        public Prediction Predict()
-        {
-            var p = this.Model.Predict();
-            if (!p.IsNormalized) p.Normalize();
-            return p;
-        }
 
         public (uint cdf, uint freq) Encode(int symbolIndex, Prediction prediction)
         {
@@ -26,18 +16,17 @@ namespace BWDPerf.Transforms.Modeling.Quantizers
             return (cdf, freq);
         }
 
-        public int Decode(uint cdf, Prediction prediction)
+        public (int symbolIndex, uint cdf, uint freq) Decode(uint cdfRange, Prediction prediction)
         {
             uint n = (uint) ((1 << this.Accuracy) - prediction.Length);
             uint CDF = 0;
             for (int i = 0; i < prediction.Length; i++)
             {
-                CDF += 1 + (uint) (prediction[i] * n);
-                if (cdf < CDF) return i;
+                var freq = 1 + (uint) (prediction[i] * n);
+                CDF += freq;
+                if (cdfRange < CDF) return (i, CDF - freq, freq);
             }
-            throw new Exception("CDF out of range");
+            throw new Exception($"CDF out of range...");
         }
-
-        public void Update(int symbolIndex) => this.Model.Update(symbolIndex);
     }
 }

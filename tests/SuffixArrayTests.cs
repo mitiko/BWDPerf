@@ -45,7 +45,7 @@ namespace BWDPerf.Tests
                 Assert.AreEqual(searchResults[i], sr[i]);
         }
 
-        private byte[] ToBytes(string s) =>
+        private static byte[] ToBytes(string s) =>
             s.ToCharArray().Select(c => (byte) c).ToArray();
     }
 }

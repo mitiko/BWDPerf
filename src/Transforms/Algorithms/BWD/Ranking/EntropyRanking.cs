@@ -6,22 +6,24 @@ using BWDPerf.Transforms.Algorithms.BWD.Entities;
 
 namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
 {
-    public class EntropyRanking : IBWDRanking
+    public class EntropyRanking : IBWDRankProvider
     {
         private RankedWord BestWord { get; set; } = RankedWord.Empty;
-        private readonly RankedWord InitialWord = RankedWord.Empty;
         private OccurenceDictionary<ushort> Model { get; set; } = new();
+        private IBWDMatchProvider MatchProvider { get; set; }
         public BWDIndex BWDIndex { get; private set; }
 
         private int n = 0; // Symbol count
         public ushort wordIndex = 256; // Next word index
 
-        public void Initialize(BWDIndex BWDIndex)
+        public void Initialize(BWDIndex BWDIndex, IBWDMatchProvider matchProvider)
         {
             // TODO: Start with a bias for initial dictionary overhead
             this.BWDIndex = BWDIndex;
-            this.n = this.BWDIndex.Length;
-            for (int i = 0; i < this.BWDIndex.Length; i++)
+            this.MatchProvider = matchProvider;
+            this.n = BWDIndex.Length;
+
+            for (int i = 0; i < n; i++)
                 this.Model.Add(this.BWDIndex[i]);
 
             Console.WriteLine($"-> Inititial entropy: {GetEntropy()}");
@@ -31,11 +33,11 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         public void Rank(Match match)
         {
             var len = match.Length;
-            if (len < 2) return; // Rank of single characters is 0
-            var (count, loc) = this.BWDIndex.Count(match);
-            if (count < 2) return; // Must locate match at at least 2 locations to get gains
+            var count = this.BWDIndex.Count(match, out var loc);
+            // Must locate match at at least 2 locations to get gains
+            if (len < 2 || count < 2) { this.MatchProvider.RemoveIfPossible(match); return;}
 
-            var wordDictionary = new OccurenceDictionary<ushort>();
+            var wordDictionary = new OccurenceDictionary<ushort>(len);
             for (int s = 0; s < len; s++)
                 wordDictionary.Add(this.BWDIndex[loc+s]);
 
@@ -47,10 +49,11 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
                 int cxw = cx - character.Value * count;
                 rank += cxw * Math.Log2(cxw) - cx * Math.Log2(cx);
             }
+            rank -= 8 * (len + 1); // Dictionary overhead
             rank += count * Math.Log2(count);
             rank -= n1 * Math.Log2(n1);
-            rank += n * Math.Log2(n);
-            rank -= 8 * (len + 1); // Dictionary overhead
+            // This is the same across all words at the current state, we can ignore it
+            // rank += n * Math.Log2(n);
 
             if (rank > this.BestWord.Rank)
                 this.BestWord = new RankedWord(new Word(loc, len), rank, count);
@@ -59,6 +62,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Ranking
         public List<RankedWord> GetTopRankedWords()
         {
             var word = this.BestWord;
+            word.Rank += n * Math.Log2(n);
             if (word.Rank <= 0)
             {
                 Console.WriteLine($"Final entropy estimate: {GetEntropy()}");

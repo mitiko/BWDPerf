@@ -5,7 +5,7 @@ namespace BWDPerf.Transforms.Algorithms.BWD.Entities
     {
         public int Location { get; }
         public int Length { get; }
-        public static Word Empty => new Word(-1, -1);
+        public static Word Empty => new(location: -1, length: -1);
 
         public Word(int location, int length)
         {
