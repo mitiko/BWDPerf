@@ -1,8 +1,12 @@
+## [Archived]
+
+I discontinue work on the BWDPerf project in place of [incan74re](https://github.com/Mitiko/incan74re/) - a rust re-write (for speed) and with a smaller more intentional scope.
+
 # BWDPerf
 
 ![.NET](https://github.com/Mitiko/BWDPerf/workflows/.NET/badge.svg)
 
-BWD is a dictionary coder, that provides sub-optimal dictionaries and patterned words.
+BWD is a dictionary coder, that provides close to optimal dictionaries and patterned words.
 
 ## Structure of the repository
 
